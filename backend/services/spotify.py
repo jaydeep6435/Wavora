@@ -41,6 +41,24 @@ class SpotifyService:
                 data = response.json()
                 
                 results = data.get("results", [])
+                
+                # FALLBACK: If we got no results, and it was an Unknown Artist (messy title), try searching just the first 2 words
+                if not results and artist.lower() == "unknown artist":
+                    words = clean_title.split()
+                    if len(words) > 2:
+                        fallback_query = " ".join(words[:2])
+                        logger.info(f"No results for {query}, trying fallback query: {fallback_query}")
+                        fallback_params = {
+                            "term": fallback_query,
+                            "media": "music",
+                            "entity": "song",
+                            "limit": 1
+                        }
+                        fallback_response = await client.get("https://itunes.apple.com/search", params=fallback_params)
+                        fallback_response.raise_for_status()
+                        fallback_data = fallback_response.json()
+                        results = fallback_data.get("results", [])
+
                 if not results:
                     logger.info(f"No track found for {query} on iTunes")
                     return None

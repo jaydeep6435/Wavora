@@ -27,6 +27,35 @@ async def force_sync(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 from services.youtube_sync import sync_trending_youtube_song
+import cloudinary
+import cloudinary.api
+from core.config import settings
+
+@api_router.get("/debug-cloudinary", summary="Dump raw Cloudinary data")
+async def debug_cloudinary():
+    """
+    Directly query Cloudinary and return the raw JSON so we can debug missing tracks.
+    """
+    cloudinary.config(
+        cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+        api_key=settings.CLOUDINARY_API_KEY,
+        api_secret=settings.CLOUDINARY_API_SECRET,
+        secure=True
+    )
+    debug_data = {}
+    for r_type in ["video", "audio", "raw", "image"]:
+        try:
+            res = cloudinary.api.resources(
+                resource_type=r_type,
+                type="upload",
+                prefix="songs/",
+                max_results=100
+            )
+            debug_data[r_type] = res.get("resources", [])
+        except Exception as e:
+            debug_data[r_type] = {"error": str(e)}
+            
+    return debug_data
 
 @api_router.post("/youtube-sync/force", summary="Force sync trending song from YouTube")
 async def force_youtube_sync(db: Session = Depends(get_db)):

@@ -180,23 +180,51 @@ body:has(.hover-rainbow-text:hover) main {
 }
 
 /* WaveSurfer Shadow DOM Styling */
+::part(cursor) {
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 20 !important;
+}
+
+::part(cursor)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+  pointer-events: none;
+}
+
 ::part(region-handle) {
-  width: 12px !important;
+  width: 24px !important;
   background-color: #ffffff !important;
   opacity: 1 !important;
-  border-radius: 4px;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.8) !important;
+  border: none !important;
+  z-index: 10 !important;
 }
 
-::part(region-handle-left) {
-  border-right: 2px solid rgba(0,0,0,0.8);
-}
-
-::part(region-handle-right) {
-  border-left: 2px solid rgba(0,0,0,0.8);
+::part(region-handle)::after {
+  content: '';
+  position: absolute;
+  height: 24px;
+  width: 4px;
+  background-color: #000000;
+  border-radius: 2px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 ::part(region-content) {
-  padding-left: 16px !important;
+  padding-left: 32px !important;
+  padding-right: 32px !important;
   padding-top: 8px !important;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);

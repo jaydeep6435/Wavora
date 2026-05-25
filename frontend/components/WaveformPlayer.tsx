@@ -38,6 +38,9 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
   useEffect(() => {
     if (!containerRef.current) return;
     let isCancelled = false;
@@ -45,16 +48,19 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     const regions = RegionsPlugin.create();
     regionsRef.current = regions;
 
+    const isMobile = window.innerWidth < 768;
+
     const ws = WaveSurfer.create({
       container: containerRef.current,
       waveColor: 'rgba(255, 255, 255, 0.2)',
       progressColor: '#ffffff',
-      cursorColor: '#ffffff',
+      cursorColor: '#ef4444', 
       cursorWidth: 4, 
       barWidth: 3,
       barGap: 2,
       barRadius: 3,
       height: 140,
+      minPxPerSec: isMobile ? 50 : 0, // Force scrolling on mobile
       plugins: [regions],
       url: getFullUrl(song.audio_url),
     });
@@ -65,8 +71,9 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       if (isCancelled) return;
       setIsReady(true);
       
-      const duration = ws.getDuration();
-      const endTime = Math.min(30, duration);
+      const audioDuration = ws.getDuration();
+      setDuration(audioDuration);
+      const endTime = Math.min(30, audioDuration);
       
       try {
         regions.addRegion({
@@ -83,6 +90,14 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       }
     });
 
+    ws.on('audioprocess', (time) => {
+      if (!isCancelled) setCurrentTime(time);
+    });
+
+    ws.on('timeupdate', (time) => {
+      if (!isCancelled) setCurrentTime(time);
+    });
+
     ws.on('play', () => { if (!isCancelled) setIsPlaying(true); });
     ws.on('pause', () => { if (!isCancelled) setIsPlaying(false); });
     
@@ -94,13 +109,36 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
     regions.on('region-updated', (region) => {
       if (isCancelled) return;
-      const length = region.end - region.start;
+      let length = region.end - region.start;
+      
+      let newStart = region.start;
+      let newEnd = region.end;
+
       if (length > 30) {
-        region.setOptions({
-          end: region.start + 30
-        });
+        newEnd = newStart + 30;
+        region.setOptions({ end: newEnd });
+      } else if (length < 5) {
+        // Enforce minimum 5 seconds
+        // Try to expand right first
+        if (newStart + 5 <= duration) {
+           newEnd = newStart + 5;
+        } else {
+           // Push left if at the very end
+           newEnd = duration;
+           newStart = Math.max(0, duration - 5);
+        }
+        region.setOptions({ start: newStart, end: newEnd });
       }
-      setSelectedRange({ start: region.start, end: region.start + 30 > region.end ? region.end : region.start + 30 });
+      
+      setSelectedRange({ start: newStart, end: newEnd });
+
+      // Auto-scroll logic for mobile
+      if (isMobile) {
+        const scrollEl = ws.getWrapper();
+        if (scrollEl) {
+           // Just ensuring WaveSurfer's native scroll catches up if dragged heavily
+        }
+      }
     });
 
     return () => {

@@ -19,7 +19,7 @@ class Settings(BaseSettings):
             return json.loads(v)
         return v
 
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/postgres"
+    DATABASE_URL: str = "sqlite:///./tuneslice.db"
     
     # Cloudinary Settings
     CLOUDINARY_CLOUD_NAME: str = ""

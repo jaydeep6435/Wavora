@@ -95,9 +95,11 @@ async def sync_songs(db: Session) -> dict:
         # Try scanning lowercase 'songs' bucket
         try:
             res_songs = supabase.storage.from_("songs").list()
+            logger.info(f"DEBUG: 'songs' bucket response: {res_songs}")
             if isinstance(res_songs, list):
                 for f in res_songs:
                     name = f.get("name")
+                    logger.info(f"DEBUG: Found file in 'songs': {name}")
                     if name and name.lower().endswith(".mp3"):
                         audio_files_map[name] = "songs"
             elif isinstance(res_songs, dict) and "error" in res_songs:
@@ -108,9 +110,11 @@ async def sync_songs(db: Session) -> dict:
         # Try scanning capitalized 'Songs' bucket
         try:
             res_Songs = supabase.storage.from_("Songs").list()
+            logger.info(f"DEBUG: 'Songs' bucket response: {res_Songs}")
             if isinstance(res_Songs, list):
                 for f in res_Songs:
                     name = f.get("name")
+                    logger.info(f"DEBUG: Found file in 'Songs': {name}")
                     if name and name.lower().endswith(".mp3"):
                         audio_files_map[name] = "Songs"
             elif isinstance(res_Songs, dict) and "error" in res_Songs:
@@ -200,3 +204,4 @@ async def sync_songs(db: Session) -> dict:
 
     logger.info(f"Sync complete. Scanned: {results['scanned']}, Added: {results['added']}, Updated: {results['updated']}, Failed: {results['failed']}")
     return results
+

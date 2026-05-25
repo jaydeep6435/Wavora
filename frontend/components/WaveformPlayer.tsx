@@ -55,7 +55,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       waveColor: 'rgba(255, 255, 255, 0.2)',
       progressColor: '#ffffff',
       cursorColor: '#ef4444', 
-      cursorWidth: 4, 
+      cursorWidth: 2, 
       barWidth: 3,
       barGap: 2,
       barRadius: 3,
@@ -83,6 +83,8 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
           color: 'rgba(255, 255, 255, 0.1)',
           drag: true,
           resize: true,
+          minLength: 10,
+          maxLength: 30,
         });
         setSelectedRange({ start: 0, end: endTime });
       } catch (e) {
@@ -109,34 +111,13 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
     regions.on('region-updated', (region) => {
       if (isCancelled) return;
-      let length = region.end - region.start;
-      
-      let newStart = region.start;
-      let newEnd = region.end;
-
-      if (length > 30) {
-        newEnd = newStart + 30;
-        region.setOptions({ end: newEnd });
-      } else if (length < 5) {
-        // Enforce minimum 5 seconds
-        // Try to expand right first
-        if (newStart + 5 <= duration) {
-           newEnd = newStart + 5;
-        } else {
-           // Push left if at the very end
-           newEnd = duration;
-           newStart = Math.max(0, duration - 5);
-        }
-        region.setOptions({ start: newStart, end: newEnd });
-      }
-      
-      setSelectedRange({ start: newStart, end: newEnd });
+      setSelectedRange({ start: region.start, end: region.end });
 
       // Auto-scroll logic for mobile
       if (isMobile) {
         const scrollEl = ws.getWrapper();
         if (scrollEl) {
-           // Just ensuring WaveSurfer's native scroll catches up if dragged heavily
+           // Native scrolling catches up
         }
       }
     });

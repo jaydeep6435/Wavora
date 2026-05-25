@@ -19,7 +19,12 @@ class SpotifyService:
 
     async def search_track_thumbnail(self, title: str, artist: str) -> dict | None:
         """Search iTunes for the track and return official metadata and thumbnail URL."""
-        clean_title = title.split("(")[0].strip() # Remove (feat. X) or (Live)
+        import re
+        
+        # Remove (feat. X) or [Official Video] tags
+        clean_title = title.split("(")[0].split("[")[0].strip()
+        # Remove common Youtube/SoundCloud filler words
+        clean_title = re.sub(r'(?i)(official|video|audio|lyrical|remix|hd|4k)', '', clean_title).strip()
         
         # If the file didn't have a dash, artist is "Unknown Artist", which ruins the search
         if artist.lower() == "unknown artist":
@@ -42,12 +47,13 @@ class SpotifyService:
                 
                 results = data.get("results", [])
                 
-                # FALLBACK: If we got no results, and it was an Unknown Artist (messy title), try searching just the first 2 words
-                if not results and artist.lower() == "unknown artist":
+                # FALLBACK: If we got no results, try searching just the absolute core of the title (first word)
+                if not results:
                     words = clean_title.split()
-                    if len(words) > 2:
-                        fallback_query = " ".join(words[:2])
-                        logger.info(f"No results for {query}, trying fallback query: {fallback_query}")
+                    if len(words) >= 1:
+                        # Just search the very first word of the title to guarantee a match
+                        fallback_query = words[0]
+                        logger.info(f"No results for '{query}', trying broad fallback query: '{fallback_query}'")
                         fallback_params = {
                             "term": fallback_query,
                             "media": "music",

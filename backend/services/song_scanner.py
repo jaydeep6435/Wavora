@@ -87,28 +87,46 @@ async def sync_songs(db: Session) -> dict:
     logger.info(f"Connecting to Supabase to scan 'songs' bucket")
     results = {"scanned": 0, "added": 0, "updated": 0, "failed": 0}
 
+    audio_files_map = {} # Maps audio_file_name -> bucket_name
+
     try:
         supabase = get_supabase_client()
-        # List all files in the bucket - check lowercase 'songs' first, fallback to 'Songs'
-        bucket_name = "songs"
+        
+        # Try scanning lowercase 'songs' bucket
         try:
-            files_response = supabase.storage.from_(bucket_name).list()
-            if isinstance(files_response, dict) and "error" in files_response:
-                raise ValueError(files_response["error"])
-        except Exception:
-            bucket_name = "Songs"
-            files_response = supabase.storage.from_(bucket_name).list()
+            res_songs = supabase.storage.from_("songs").list()
+            if isinstance(res_songs, list):
+                for f in res_songs:
+                    name = f.get("name")
+                    if name and name.lower().endswith(".mp3"):
+                        audio_files_map[name] = "songs"
+            elif isinstance(res_songs, dict) and "error" in res_songs:
+                logger.info(f"Could not list from 'songs' bucket (returned dict error): {res_songs}")
+        except Exception as e:
+            logger.info(f"Could not list from 'songs' bucket: {e}")
 
-        audio_files = [f["name"] for f in files_response if f["name"].lower().endswith(".mp3")]
+        # Try scanning capitalized 'Songs' bucket
+        try:
+            res_Songs = supabase.storage.from_("Songs").list()
+            if isinstance(res_Songs, list):
+                for f in res_Songs:
+                    name = f.get("name")
+                    if name and name.lower().endswith(".mp3"):
+                        audio_files_map[name] = "Songs"
+            elif isinstance(res_Songs, dict) and "error" in res_Songs:
+                logger.info(f"Could not list from 'Songs' bucket (returned dict error): {res_Songs}")
+        except Exception as e:
+            logger.info(f"Could not list from 'Songs' bucket: {e}")
+
     except Exception as e:
-        logger.warning(f"Failed to access Supabase songs bucket (tried 'songs' and 'Songs'): {e}. Skipping scan.")
+        logger.warning(f"Failed to initialize Supabase client for bucket scan: {e}. Skipping scan.")
         return results
 
-    if not audio_files:
-        logger.info(f"No audio files found in Supabase '{bucket_name}' bucket.")
+    if not audio_files_map:
+        logger.info("No audio files found in Supabase 'songs' or 'Songs' buckets.")
         return results
 
-    for audio_file in audio_files:
+    for audio_file, bucket_name in audio_files_map.items():
         results["scanned"] += 1
         
         # Get public URL for the song

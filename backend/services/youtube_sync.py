@@ -59,17 +59,15 @@ def sync_trending_youtube_song():
             # Search for the top trending music video and download it
             # scsearch15: grabs top 15 results. It will skip long DJ mixes and download the first valid one.
             logger.info("Searching and downloading from SoundCloud...")
-            info_dict = ydl.extract_info("scsearch15:trending pop", download=True)
             
-            # extract_info returns a dictionary. Since it's a search, the actual video is in 'entries'
-            if 'entries' in info_dict and len(info_dict['entries']) > 0:
-                video_info = info_dict['entries'][0]
-            else:
-                video_info = info_dict
-                
-            video_id = video_info.get('id', 'unknown_id')
-            video_title = video_info.get('title', 'Unknown Title')
-            logger.info(f"Downloaded: {video_title} (ID: {video_id})")
+            try:
+                ydl.extract_info("scsearch15:trending pop", download=True)
+            except Exception as download_e:
+                # yt-dlp intentionally raises an exception to break out of the playlist loop when max_downloads is reached
+                if "max-downloads" in str(download_e) or "Maximum number of downloads" in str(download_e):
+                    logger.info("Successfully downloaded 1 track and reached max-downloads limit. Proceeding...")
+                else:
+                    raise download_e
 
             # Dynamically find the file yt-dlp just created
             downloaded_files = glob.glob(os.path.join(tmp_dir, "yt_sync_*.mp3"))
@@ -84,9 +82,7 @@ def sync_trending_youtube_song():
             upload_result = cloudinary.uploader.upload_large(
                 expected_filepath,
                 resource_type="video",
-                folder="songs/",
-                public_id=f"{video_id}", # Optional: explicit public ID
-                overwrite=True
+                folder="songs/"
             )
             
             cloudinary_url = upload_result.get("secure_url")
@@ -99,7 +95,7 @@ def sync_trending_youtube_song():
 
             return {
                 "success": True, 
-                "title": video_title, 
+                "title": "Trending Track", 
                 "cloudinary_url": cloudinary_url
             }
 

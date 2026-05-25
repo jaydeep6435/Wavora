@@ -68,14 +68,16 @@ export default function Home() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const bgSong = selectedSong || hoveredSong;
+
   return (
     <>
       {/* Dynamic Ambient Background */}
       <div className="fixed inset-0 z-0 pointer-events-none bg-black transition-colors duration-700">
         <AnimatePresence>
-          {hoveredSong && hoveredSong.thumbnail_url && (
+          {bgSong && bgSong.thumbnail_url && (
             <motion.div
-              key={hoveredSong.id}
+              key={bgSong.id}
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.7 }}
               exit={{ opacity: 0 }}
@@ -83,7 +85,7 @@ export default function Home() {
               className="absolute inset-0"
             >
               <img 
-                src={hoveredSong.thumbnail_url.startsWith('http') ? hoveredSong.thumbnail_url : `http://localhost:8000${hoveredSong.thumbnail_url}`} 
+                src={bgSong.thumbnail_url.startsWith('http') ? bgSong.thumbnail_url : `http://localhost:8000${bgSong.thumbnail_url}`} 
                 alt="bg"
                 className="w-full h-full object-cover scale-110 blur-[100px] saturate-[1.5]"
               />

@@ -215,7 +215,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/50 backdrop-blur-md"
+              className="absolute inset-0 bg-black/20"
               onClick={() => setSelectedSong(null)}
             />
             <div className="relative z-10 w-full max-w-5xl">

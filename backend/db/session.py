@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base as legacy_declarative_ba
 from typing import Generator
 from core.config import settings
 
-# SQLite connection args are required to allow multiple threads to communicate with it safely
+# Only use specific connect_args for sqlite if somehow used, otherwise standard for postgres
 connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(

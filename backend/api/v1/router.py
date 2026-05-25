@@ -2,28 +2,24 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 import os
 import uuid
+import logging
 from db.session import get_db
 from models.song import Song
 from schemas.song import SongResponse
 from schemas.clip import ClipGenerateRequest
 from typing import List
 from services.audio_clipper import slice_audio_async
+from services.song_scanner import get_supabase_client
 
+logger = logging.getLogger("tuneslice.router")
 api_router = APIRouter()
 
 def map_song_to_response(song: Song) -> SongResponse:
     """
     Utility mapper that reads a database Song model and computes relative 
     web-accessible URLs for raw audio streaming and artwork.
+    For Supabase, the audio_path and thumbnail_path are already public URLs.
     """
-    audio_filename = os.path.basename(song.audio_path)
-    audio_url = f"/songs/{audio_filename}"
-    
-    thumbnail_url = None
-    if song.thumbnail_path:
-        thumbnail_filename = os.path.basename(song.thumbnail_path)
-        thumbnail_url = f"/thumbnails/{thumbnail_filename}"
-        
     return SongResponse(
         id=song.id,
         title=song.title,
@@ -31,8 +27,8 @@ def map_song_to_response(song: Song) -> SongResponse:
         audio_path=song.audio_path,
         thumbnail_path=song.thumbnail_path,
         duration=song.duration,
-        audio_url=audio_url,
-        thumbnail_url=thumbnail_url
+        audio_url=song.audio_path,
+        thumbnail_url=song.thumbnail_path
     )
 
 @api_router.get("/songs", response_model=List[SongResponse], summary="Get all songs")
@@ -42,7 +38,7 @@ async def get_songs(
     db: Session = Depends(get_db)
 ):
     """
-    Retrieve all local songs metadata stored in the SQLite database, with pagination capabilities.
+    Retrieve all local songs metadata stored in the database, with pagination capabilities.
     """
     songs = db.query(Song).offset(skip).limit(limit).all()
     return [map_song_to_response(song) for song in songs]
@@ -95,28 +91,54 @@ async def generate_clip(
     clip_id = str(uuid.uuid4())
     clip_filename = f"{clip_id}.mp3"
 
-    # Resolve absolute path to clips directory
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    clips_dir = os.path.abspath(os.path.join(base_dir, "clips"))
-    output_path = os.path.join(clips_dir, clip_filename)
+    # Resolve absolute path to a temporary directory
+    # On Vercel, /tmp is writable
+    tmp_dir = "/tmp"
+    if os.name == "nt": # Fallback for Windows local dev
+        tmp_dir = os.path.join(os.environ.get("TEMP", "C:\\temp"))
+        os.makedirs(tmp_dir, exist_ok=True)
+        
+    output_path = os.path.join(tmp_dir, clip_filename)
     
     # 4. Execute the non-blocking async FFmpeg clipping engine
     try:
         await slice_audio_async(
-            input_path=song.audio_path,
+            input_path=song.audio_path,  # remote URL
             output_path=output_path,
             start_time=request.start_time,
             end_time=request.end_time
         )
     except Exception as e:
+        logger.error(f"FFmpeg slicing failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"FFmpeg audio processing failed: {str(e)}"
         )
 
-    # 5. Return success payload matching requirements exactly
+    # 5. Upload the clip to Supabase Storage
+    try:
+        supabase = get_supabase_client()
+        with open(output_path, 'rb') as f:
+            res = supabase.storage.from_("clips").upload(clip_filename, f, {"content-type": "audio/mpeg"})
+            
+        public_url = supabase.storage.from_("clips").get_public_url(clip_filename)
+    except Exception as e:
+        logger.error(f"Supabase upload failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload clip to storage: {str(e)}"
+        )
+    finally:
+        # Cleanup the temp file
+        if os.path.exists(output_path):
+            try:
+                os.remove(output_path)
+            except:
+                pass
+
+    # 6. Return success payload matching requirements exactly
     return {
         "success": True,
-        "clipUrl": f"/clips/{clip_filename}",
+        "clipUrl": public_url,
         "duration": round(request.end_time - request.start_time, 2)
     }

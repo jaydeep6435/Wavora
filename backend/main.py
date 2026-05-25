@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup actions
-    # 1. Initialize SQLite Database Schema
+    # 1. Initialize PostgreSQL Database Schema
     from db.session import engine
     from db.base import Base
     Base.metadata.create_all(bind=engine)
@@ -47,22 +47,6 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-# Ensure media storage directories exist (relative to where main.py is run)
-# We resolve absolute paths to ensure mounting works seamlessly
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-songs_path = os.path.abspath(os.path.join(base_dir, "songs"))
-clips_path = os.path.abspath(os.path.join(base_dir, "clips"))
-thumbnails_path = os.path.abspath(os.path.join(base_dir, "thumbnails"))
-
-# Create them if they don't exist
-os.makedirs(songs_path, exist_ok=True)
-os.makedirs(clips_path, exist_ok=True)
-os.makedirs(thumbnails_path, exist_ok=True)
-
-# Mount media static directories for asset delivery and audio streaming
-app.mount("/songs", StaticFiles(directory=songs_path), name="songs")
-app.mount("/clips", StaticFiles(directory=clips_path), name="clips")
-app.mount("/thumbnails", StaticFiles(directory=thumbnails_path), name="thumbnails")
 
 # Register API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)

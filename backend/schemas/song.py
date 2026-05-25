@@ -5,8 +5,8 @@ import os
 class SongBase(BaseModel):
     title: str = Field(..., description="Title of the song")
     artist: str = Field(..., description="Artist name")
-    audio_path: str = Field(..., description="Absolute local filesystem path to the audio file")
-    thumbnail_path: Optional[str] = Field(None, description="Absolute local filesystem path to the thumbnail image")
+    audio_path: str = Field(..., description="Supabase public URL to the audio file")
+    thumbnail_path: Optional[str] = Field(None, description="Remote URL path for the thumbnail image")
     duration: float = Field(..., ge=0, description="Duration of the song in seconds")
 
 class SongCreate(SongBase):

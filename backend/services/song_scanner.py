@@ -5,14 +5,20 @@ import logging
 from sqlalchemy.orm import Session
 from core.config import settings
 from models.song import Song
+from supabase import create_client, Client
 
 # Configure logging
 logger = logging.getLogger("tuneslice.scanner")
 logging.basicConfig(level=logging.INFO)
 
-def get_audio_duration(file_path: str) -> float:
+def get_supabase_client() -> Client:
+    if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+        raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in .env")
+    return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+
+def get_audio_duration(file_url: str) -> float:
     """
-    Query ffprobe to extract audio file duration in seconds without loading the file into RAM.
+    Query ffprobe to extract audio file duration in seconds using a remote URL.
     """
     if not shutil.which("ffprobe"):
         raise RuntimeError("ffprobe binary is not installed or not present in system PATH")
@@ -22,7 +28,7 @@ def get_audio_duration(file_path: str) -> float:
         "-v", "error",
         "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1",
-        file_path
+        file_url
     ]
     try:
         result = subprocess.run(
@@ -31,14 +37,14 @@ def get_audio_duration(file_path: str) -> float:
             stderr=subprocess.PIPE,
             text=True,
             check=True,
-            timeout=5.0
+            timeout=15.0 # Increased timeout for network request
         )
         duration_str = result.stdout.strip()
         if not duration_str:
             raise ValueError("ffprobe returned empty duration")
         return float(duration_str)
     except Exception as e:
-        logger.error(f"Failed to extract duration for {file_path} using ffprobe: {e}")
+        logger.error(f"Failed to extract duration for {file_url} using ffprobe: {e}")
         raise
 
 def parse_filename(filename: str) -> tuple[str, str]:
@@ -73,80 +79,60 @@ def parse_filename(filename: str) -> tuple[str, str]:
 
     return title, artist
 
-def find_matching_thumbnail(filename_no_ext: str, thumbnails_dir: str) -> str | None:
-    """
-    Scans the thumbnails directory for an artwork file matching the song filename.
-    Supports .jpg, .jpeg, .png, and .webp extensions.
-    """
-    if not os.path.exists(thumbnails_dir):
-        return None
-
-    valid_extensions = [".jpg", ".jpeg", ".png", ".webp"]
-    
-    # Try direct match with the lowercase song filename base
-    for ext in valid_extensions:
-        potential_name = f"{filename_no_ext}{ext}"
-        potential_path = os.path.join(thumbnails_dir, potential_name)
-        if os.path.isfile(potential_path):
-            return potential_path
-            
-    # Try matching title string case-insensitively
-    for file in os.listdir(thumbnails_dir):
-        base, ext = os.path.splitext(file)
-        if base.lower() == filename_no_ext.lower() and ext.lower() in valid_extensions:
-            return os.path.join(thumbnails_dir, file)
-
-    return None
-
 async def sync_songs(db: Session) -> dict:
     """
-    Main sync scanner service. Traverses the songs directory, processes
-    each audio file, resolves dependencies, and saves details to the SQLite DB.
+    Main sync scanner service. Connects to Supabase Storage, processes
+    each audio file in the 'songs' bucket, resolves dependencies, and saves details to DB.
     """
-    # Resolve absolute paths relative to execution folder
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    songs_dir = os.path.abspath(os.path.join(base_dir, "songs"))
-    thumbnails_dir = os.path.abspath(os.path.join(base_dir, "thumbnails"))
-
-    logger.info(f"Scanning songs directory: {songs_dir}")
-    logger.info(f"Scanning thumbnails directory: {thumbnails_dir}")
-
+    logger.info(f"Connecting to Supabase to scan 'songs' bucket")
     results = {"scanned": 0, "added": 0, "updated": 0, "failed": 0}
 
-    if not os.path.exists(songs_dir):
-        logger.warning(f"Songs directory does not exist: {songs_dir}. Skipping scan.")
+    try:
+        supabase = get_supabase_client()
+        # List all files in the 'songs' bucket
+        files_response = supabase.storage.from_("songs").list()
+        # Note: supabase-py v2+ returns a list of dictionaries directly
+        audio_files = [f["name"] for f in files_response if f["name"].lower().endswith(".mp3")]
+    except Exception as e:
+        logger.warning(f"Failed to access Supabase songs bucket: {e}. Skipping scan.")
         return results
 
-    # Get all .mp3 files in /songs
-    audio_files = [f for f in os.listdir(songs_dir) if f.lower().endswith(".mp3")]
+    if not audio_files:
+        logger.info("No audio files found in Supabase 'songs' bucket.")
+        return results
 
     for audio_file in audio_files:
         results["scanned"] += 1
-        full_audio_path = os.path.join(songs_dir, audio_file)
+        
+        # Get public URL for the song
+        try:
+            public_url_res = supabase.storage.from_("songs").get_public_url(audio_file)
+            # In supabase-py v2, get_public_url returns the string directly
+            full_audio_url = public_url_res
+        except Exception as e:
+            logger.error(f"Could not get public URL for {audio_file}: {e}")
+            results["failed"] += 1
+            continue
+
         filename_no_ext, _ = os.path.splitext(audio_file)
 
         try:
-            # 1. Fetch exact duration from ffprobe
-            duration = get_audio_duration(full_audio_path)
+            # 1. Fetch exact duration from ffprobe using the public URL
+            duration = get_audio_duration(full_audio_url)
 
             # 2. Extract song title and artist names
             title, artist = parse_filename(audio_file)
 
-            # 3. Lookup artwork inside thumbnails folder
-            thumbnail_path = find_matching_thumbnail(filename_no_ext, thumbnails_dir)
-
-            # 3.5. If no local thumbnail, try fetching from Spotify
-            if not thumbnail_path:
-                from services.spotify import spotify_service
-                logger.info(f"No local thumbnail for {title}. Fetching from Spotify...")
-                spotify_url = await spotify_service.search_track_thumbnail(title, artist)
-                if spotify_url:
-                    downloaded_path = await spotify_service.download_thumbnail(spotify_url, filename_no_ext, thumbnails_dir)
-                    if downloaded_path:
-                        thumbnail_path = downloaded_path
+            # 3. Try fetching thumbnail from Spotify
+            thumbnail_url = None
+            from services.spotify import spotify_service
+            logger.info(f"Fetching thumbnail for {title} from Spotify...")
+            spotify_url = await spotify_service.search_track_thumbnail(title, artist)
+            if spotify_url:
+                thumbnail_url = spotify_url # Save the remote URL directly in DB
 
             # 4. Check if song already exists in the database
-            existing_song = db.query(Song).filter(Song.audio_path == full_audio_path).first()
+            existing_song = db.query(Song).filter(Song.audio_path == full_audio_url).first()
 
             if existing_song:
                 # Update existing song if metadata changed
@@ -160,8 +146,8 @@ async def sync_songs(db: Session) -> dict:
                 if existing_song.duration != duration:
                     existing_song.duration = duration
                     changed = True
-                if existing_song.thumbnail_path != thumbnail_path:
-                    existing_song.thumbnail_path = thumbnail_path
+                if existing_song.thumbnail_path != thumbnail_url:
+                    existing_song.thumbnail_path = thumbnail_url
                     changed = True
                 
                 if changed:
@@ -173,8 +159,8 @@ async def sync_songs(db: Session) -> dict:
                 new_song = Song(
                     title=title,
                     artist=artist,
-                    audio_path=full_audio_path,
-                    thumbnail_path=thumbnail_path,
+                    audio_path=full_audio_url,
+                    thumbnail_path=thumbnail_url,
                     duration=duration
                 )
                 db.add(new_song)

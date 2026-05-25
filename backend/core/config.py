@@ -19,8 +19,11 @@ class Settings(BaseSettings):
             return json.loads(v)
         return v
 
-    DATABASE_URL: str = "sqlite:///./tuneslice.db"
-
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/postgres"
+    
+    # Supabase Settings
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
     # Base Media Storage Directories
     SONGS_DIR: str = "../songs"
     CLIPS_DIR: str = "../clips"

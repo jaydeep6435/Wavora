@@ -22,11 +22,11 @@ async def slice_audio_async(
         logger.error(error_msg)
         raise RuntimeError(error_msg)
 
-    # 2. Verify source audio exists
-    if not os.path.exists(input_path):
-        error_msg = f"Source audio file not found: {input_path}"
+    # 2. Verify source audio URL exists (Removed local file check since input is remote)
+    if not input_path or not input_path.startswith("http"):
+        error_msg = f"Invalid source audio URL: {input_path}"
         logger.error(error_msg)
-        raise FileNotFoundError(error_msg)
+        raise ValueError(error_msg)
 
     # Ensure parent output directory exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

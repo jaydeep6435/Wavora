@@ -48,9 +48,9 @@ def sync_trending_youtube_song():
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Search for the top trending music video and download it
-            # ytsearch1: returns the first result
-            logger.info("Searching and downloading from YouTube...")
-            info_dict = ydl.extract_info("ytsearch1:top trending pop music track audio official", download=True)
+            # scsearch1: searches SoundCloud to completely bypass YouTube's datacenter IP block
+            logger.info("Searching and downloading from SoundCloud...")
+            info_dict = ydl.extract_info("scsearch1:trending pop", download=True)
             
             # extract_info returns a dictionary. Since it's a search, the actual video is in 'entries'
             if 'entries' in info_dict and len(info_dict['entries']) > 0:

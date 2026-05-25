@@ -194,3 +194,10 @@ body:has(.hover-rainbow-text:hover) main {
 ::part(region-handle-right) {
   border-left: 2px solid rgba(0,0,0,0.8);
 }
+
+::part(region-content) {
+  padding-left: 16px !important;
+  padding-top: 8px !important;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}

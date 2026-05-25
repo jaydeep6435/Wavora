@@ -134,7 +134,6 @@ export default function Home() {
             onClick={handleSync}
             disabled={isSyncing}
             className={`h-[65px] px-6 rounded-[58px] border-2 ${isSyncing ? 'border-[#14b861] text-[#14b861]' : 'border-white/20 text-white hover:border-white'} font-medium flex items-center justify-center transition-all bg-black`}
-            title="Sync new songs from Supabase"
           >
             <RefreshCw className={`w-6 h-6 ${isSyncing ? 'animate-spin' : ''}`} />
           </button>

@@ -14,69 +14,43 @@ class SpotifyService:
         self.token = None
 
     async def get_token(self) -> str | None:
-        """Fetch Client Credentials token from Spotify."""
-        if not self.client_id or not self.client_secret:
-            return None
-
-        auth_string = f"{self.client_id}:{self.client_secret}"
-        b64_auth = base64.b64encode(auth_string.encode()).decode()
-
-        headers = {
-            "Authorization": f"Basic {b64_auth}",
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-        data = {"grant_type": "client_credentials"}
-
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post("https://accounts.spotify.com/api/token", headers=headers, data=data)
-                response.raise_for_status()
-                token_data = response.json()
-                self.token = token_data.get("access_token")
-                return self.token
-        except Exception as e:
-            logger.error(f"Failed to get Spotify token: {e}")
-            return None
+        """Deprecated: No longer needed for iTunes API."""
+        return None
 
     async def search_track_thumbnail(self, title: str, artist: str) -> str | None:
-        """Search Spotify for the track and return the highest resolution thumbnail URL."""
-        if not self.token:
-            token = await self.get_token()
-            if not token:
-                return None
-
+        """Search iTunes for the track and return the highest resolution thumbnail URL."""
         # Clean up the search query slightly
         clean_title = title.split("(")[0].strip() # Remove (feat. X) or (Live)
-        query = f"track:{clean_title} artist:{artist}"
+        query = f"{clean_title} {artist}"
         
-        headers = {"Authorization": f"Bearer {self.token}"}
         params = {
-            "q": query,
-            "type": "track",
+            "term": query,
+            "media": "music",
+            "entity": "song",
             "limit": 1
         }
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get("https://api.spotify.com/v1/search", headers=headers, params=params)
+                response = await client.get("https://itunes.apple.com/search", params=params)
                 response.raise_for_status()
                 data = response.json()
                 
-                tracks = data.get("tracks", {}).get("items", [])
-                if not tracks:
-                    logger.info(f"No Spotify track found for {title} - {artist}")
+                results = data.get("results", [])
+                if not results:
+                    logger.info(f"No track found for {title} - {artist} on iTunes")
                     return None
                 
-                track = tracks[0]
-                images = track.get("album", {}).get("images", [])
-                if not images:
+                track = results[0]
+                artwork_url = track.get("artworkUrl100")
+                if not artwork_url:
                     return None
                     
-                # Images are typically sorted largest to smallest. Grab the first one.
-                best_image_url = images[0].get("url")
+                # iTunes returns 100x100 artwork by default, replace it with 600x600 for high quality!
+                best_image_url = artwork_url.replace("100x100bb", "600x600bb")
                 return best_image_url
         except Exception as e:
-            logger.error(f"Failed to search Spotify track {title} - {artist}: {e}")
+            logger.error(f"Failed to search track {title} - {artist}: {e}")
             return None
 
     async def download_thumbnail(self, url: str, filename_no_ext: str, thumbnails_dir: str) -> str | None:

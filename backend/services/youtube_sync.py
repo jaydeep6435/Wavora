@@ -61,7 +61,8 @@ def sync_trending_youtube_song():
             logger.info("Searching and downloading from SoundCloud...")
             
             try:
-                ydl.extract_info("scsearch15:trending pop", download=True)
+                # Search specifically for Indian trending/viral songs
+                ydl.extract_info("scsearch15:trending indian instagram reels", download=True)
             except Exception as download_e:
                 # yt-dlp intentionally raises an exception to break out of the playlist loop when max_downloads is reached
                 if "max-downloads" in str(download_e) or "Maximum number of downloads" in str(download_e):

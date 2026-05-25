@@ -101,7 +101,7 @@ async def sync_songs(db: Session) -> dict:
         # Cloudinary treats API audio uploads as 'video', but manual web dashboard uploads might be 'raw'
         audio_files_list = []
         
-        for r_type in ["video", "raw"]:
+        for r_type in ["video", "audio", "raw"]:
             response = cloudinary.api.resources(
                 resource_type=r_type,
                 type="upload",

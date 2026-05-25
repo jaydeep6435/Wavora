@@ -101,23 +101,27 @@ async def sync_songs(db: Session) -> dict:
         # Cloudinary treats API audio uploads as 'video', but manual web dashboard uploads might be 'raw'
         audio_files_list = []
         
-        for r_type in ["video", "audio", "raw"]:
-            response = cloudinary.api.resources(
-                resource_type=r_type,
-                type="upload",
-                prefix="songs/",
-                max_results=500
-            )
-            
-            resources = response.get("resources", [])
-            for resource in resources:
-                public_id = resource.get("public_id")
-                secure_url = resource.get("secure_url")
+        for r_type in ["video", "audio", "raw", "image"]:
+            try:
+                response = cloudinary.api.resources(
+                    resource_type=r_type,
+                    type="upload",
+                    prefix="songs/",
+                    max_results=500
+                )
                 
-                filename = public_id.split("/")[-1]
-                if filename:
-                    audio_files_list.append((filename, secure_url, resource.get("duration")))
-                    results["debug"].append(f"Found in Cloudinary: {filename} ({r_type})")
+                resources = response.get("resources", [])
+                for resource in resources:
+                    public_id = resource.get("public_id")
+                    secure_url = resource.get("secure_url")
+                    
+                    filename = public_id.split("/")[-1]
+                    if filename:
+                        audio_files_list.append((filename, secure_url, resource.get("duration")))
+                        results["debug"].append(f"Found in Cloudinary: {filename} ({r_type})")
+            except Exception as e:
+                logger.warning(f"Failed to fetch resource type {r_type}: {e}")
+                results["debug"].append(f"Skipped {r_type} query: {str(e)}")
 
     except Exception as e:
         logger.warning(f"Failed to fetch resources from Cloudinary: {e}. Skipping scan.")

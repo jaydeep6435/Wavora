@@ -22,6 +22,10 @@ export default function Home() {
     try {
       const result = await MusicService.syncLibrary();
       if (result.success) {
+        console.log("SYNC DEBUG INFO:", result.results.debug);
+        if (result.results.debug && result.results.debug.length > 0) {
+            toast(`Debug: ${result.results.debug.join(" | ")}`, { icon: "🐛", duration: 6000 });
+        }
         toast.success(`Synced! Added ${result.results.added} new tracks.`);
         await loadSongs();
       }

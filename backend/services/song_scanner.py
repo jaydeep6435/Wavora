@@ -91,9 +91,9 @@ async def sync_songs(db: Session) -> dict:
     each audio file in the 'songs' folder, resolves dependencies, and saves details to DB.
     """
     logger.info(f"Connecting to Cloudinary to scan 'songs/' folder")
-    results = {"scanned": 0, "added": 0, "updated": 0, "failed": 0}
+    results = {"scanned": 0, "added": 0, "updated": 0, "failed": 0, "debug": []}
 
-    audio_files_list = [] # List of tuples: (filename, secure_url)
+    audio_files_list = [] # List of tuples: (filename, secure_url, cld_duration)
 
     try:
         configure_cloudinary()
@@ -117,6 +117,7 @@ async def sync_songs(db: Session) -> dict:
                 filename = public_id.split("/")[-1]
                 if filename:
                     audio_files_list.append((filename, secure_url, resource.get("duration")))
+                    results["debug"].append(f"Found in Cloudinary: {filename} ({r_type})")
 
     except Exception as e:
         logger.warning(f"Failed to fetch resources from Cloudinary: {e}. Skipping scan.")
@@ -196,6 +197,7 @@ async def sync_songs(db: Session) -> dict:
 
         except Exception as e:
             logger.error(f"Error processing audio file {audio_file}: {e}")
+            results["debug"].append(f"Failed {audio_file}: {str(e)}")
             results["failed"] += 1
             db.rollback()
 

@@ -14,6 +14,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [hoveredSong, setHoveredSong] = useState<Song | null>(null);
 
   useEffect(() => {
     loadSongs();
@@ -51,8 +52,32 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen p-6 md:p-12 lg:p-16 max-w-[1400px] mx-auto relative z-10 bg-black">
-      {/* Header */}
+    <>
+      {/* Dynamic Ambient Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none bg-black transition-colors duration-700">
+        <AnimatePresence>
+          {hoveredSong && hoveredSong.thumbnail_url && (
+            <motion.div
+              key={hoveredSong.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.7 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="absolute inset-0"
+            >
+              <img 
+                src={hoveredSong.thumbnail_url.startsWith('http') ? hoveredSong.thumbnail_url : `http://localhost:8000${hoveredSong.thumbnail_url}`} 
+                alt="bg"
+                className="w-full h-full object-cover scale-110 blur-[100px] saturate-[1.5]"
+              />
+              <div className="absolute inset-0 bg-black/30" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <main className="min-h-screen p-6 md:p-12 lg:p-16 max-w-[1400px] mx-auto relative z-10 bg-transparent transition-colors duration-700">
+        {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-8">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
@@ -100,6 +125,8 @@ export default function Home() {
               transition={{ delay: index * 0.05 }}
               key={song.id}
               onClick={() => setSelectedSong(song)}
+              onMouseEnter={() => setHoveredSong(song)}
+              onMouseLeave={() => setHoveredSong(null)}
               className="dialed-card group cursor-pointer rounded-[24px] overflow-hidden flex flex-col"
             >
               <div className="relative aspect-square w-full p-3 pb-0">
@@ -168,6 +195,7 @@ export default function Home() {
           </div>
         )}
       </AnimatePresence>
-    </main>
+      </main>
+    </>
   );
 }

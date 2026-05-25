@@ -98,7 +98,7 @@ def find_matching_thumbnail(filename_no_ext: str, thumbnails_dir: str) -> str | 
 
     return None
 
-def sync_songs(db: Session) -> dict:
+async def sync_songs(db: Session) -> dict:
     """
     Main sync scanner service. Traverses the songs directory, processes
     each audio file, resolves dependencies, and saves details to the SQLite DB.
@@ -134,6 +134,16 @@ def sync_songs(db: Session) -> dict:
 
             # 3. Lookup artwork inside thumbnails folder
             thumbnail_path = find_matching_thumbnail(filename_no_ext, thumbnails_dir)
+
+            # 3.5. If no local thumbnail, try fetching from Spotify
+            if not thumbnail_path:
+                from services.spotify import spotify_service
+                logger.info(f"No local thumbnail for {title}. Fetching from Spotify...")
+                spotify_url = await spotify_service.search_track_thumbnail(title, artist)
+                if spotify_url:
+                    downloaded_path = await spotify_service.download_thumbnail(spotify_url, filename_no_ext, thumbnails_dir)
+                    if downloaded_path:
+                        thumbnail_path = downloaded_path
 
             # 4. Check if song already exists in the database
             existing_song = db.query(Song).filter(Song.audio_path == full_audio_path).first()

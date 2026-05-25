@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     CLIPS_DIR: str = "../clips"
     THUMBNAILS_DIR: str = "../thumbnails"
 
+    # Spotify API (Optional for thumbnail fetching)
+    SPOTIFY_CLIENT_ID: str | None = None
+    SPOTIFY_CLIENT_SECRET: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

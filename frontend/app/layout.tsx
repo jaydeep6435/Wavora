@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "A professional, interactive waveform editor to visually slice, preview, and generate high-quality 30-second clips from your favorite songs.",
 };
 
+import { Toaster } from "react-hot-toast";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,8 +21,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased dark`}>
-      <body className="min-h-full bg-zinc-950 text-zinc-50 font-sans selection:bg-emerald-500 selection:text-black">
+      <body className="min-h-full bg-background text-foreground font-sans selection:bg-primary selection:text-black">
         {children}
+        <Toaster 
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: '#1c1c1e',
+              color: '#fff',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+            },
+            success: {
+              iconTheme: {
+                primary: '#14b861',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
       </body>
     </html>
   );

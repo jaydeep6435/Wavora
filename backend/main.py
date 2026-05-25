@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     from services.song_scanner import sync_songs
     db = SessionLocal()
     try:
-        sync_songs(db)
+        await sync_songs(db)
     except Exception as e:
         import logging
         logging.getLogger("tuneslice.main").error(f"Startup song scanning sync failed: {e}")

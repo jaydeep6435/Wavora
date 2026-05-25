@@ -13,7 +13,7 @@ class ClipGenerateRequest(BaseModel):
             if end_time <= start_time:
                 raise ValueError("End time must be greater than start time")
             duration = end_time - start_time
-            if duration > 30.0:
+            if duration > 30.1: # Add 100ms tolerance for floating point math
                 raise ValueError("Clip duration cannot exceed 30 seconds")
         return end_time
 

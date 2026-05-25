@@ -1,23 +1,27 @@
 @import "tailwindcss";
+
 @theme {
-  --color-primary: #1db954;
-  --color-primary-hover: #1ed760;
-  --color-background: #09090b;
-  --color-foreground: #fafafa;
-  --color-card: #121214;
-  --color-surface: #27272a;
+  --color-primary: #ffffff;
+  --color-primary-hover: #e0e0e0;
+  --color-background: #000000;
+  --color-foreground: #ffffff;
+  --color-card: #000000;
+  --color-surface: #111111;
+  --color-surface-hover: #1a1a1a;
 }
 
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  --background: #000000;
+  --foreground: #ffffff;
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: var(--font-sans), sans-serif;
+  background-color: var(--background);
+  font-family: 'Inter', system-ui, sans-serif;
   overflow-x: hidden;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Premium Scrollbar */
@@ -31,25 +35,162 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Smooth transitions */
 .transition-all {
   transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-timing-function: ease;
   transition-duration: 300ms;
 }
 
-/* Glassmorphism utilities */
-.glass-panel {
-  background: rgba(18, 18, 20, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+/* Dialed.gg Brutalist Cards */
+.dialed-card {
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .dialed-card:hover {
+    transform: scale(1.02);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+}
+
+.dialed-card:active {
+  transform: scale(0.97);
+}
+
+/* Dialed.gg Input */
+.dialed-input {
+  background: transparent;
+  border: 2px solid #fff;
+  border-radius: 58px;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.dialed-input:focus {
+  border-color: #14b861; /* Dialed success green */
+}
+
+.dialed-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Dialed.gg Custom Properties & Keyframes */
+@property --ring-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes ringSpin {
+  to { --ring-angle: 360deg; }
+}
+
+/* Dialed.gg Primary Button */
+.btn-primary {
+  background: #fff;
+  color: #000;
+  border-radius: 58px;
+  border: none;
+  font-weight: 500;
+  letter-spacing: -0.32px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(from var(--ring-angle), #ff6b6b, #fdcb6e, #55efc4, #00cec9, #6c5ce7, #fd79a8, #ff6b6b);
+  pointer-events: none;
+  opacity: 0;
+  animation: ringSpin 3s linear infinite;
+  transition: opacity 0.35s ease;
+  z-index: -1;
+}
+
+@media (hover: hover) {
+  .btn-primary:hover {
+    transform: scale(1.04);
+    color: #fff;
+  }
+  .btn-primary:hover::after {
+    opacity: 1;
+  }
+}
+
+.btn-primary:active {
+  transform: scale(0.94) !important;
+}
+
+@keyframes rainbowShift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes intenseShake {
+  0% { transform: translate(3px, 2px) rotate(0deg); }
+  10% { transform: translate(-3px, -4px) rotate(-1deg); }
+  20% { transform: translate(-5px, 0px) rotate(1deg); }
+  30% { transform: translate(0px, 4px) rotate(0deg); }
+  40% { transform: translate(3px, -2px) rotate(1deg); }
+  50% { transform: translate(-3px, 4px) rotate(-1deg); }
+  60% { transform: translate(-5px, 2px) rotate(0deg); }
+  70% { transform: translate(4px, 2px) rotate(-1deg); }
+  80% { transform: translate(-3px, -2px) rotate(1deg); }
+  90% { transform: translate(4px, 4px) rotate(0deg); }
+  100% { transform: translate(3px, -4px) rotate(-1deg); }
+}
+
+/* Shake all content on the page when the app name is hovered */
+body:has(.hover-rainbow-text:hover) main {
+  animation: intenseShake 0.1s infinite;
+}
+
+@media (hover: hover) {
+  .hover-rainbow-text {
+    transition: color 0.3s ease;
+  }
+  .hover-rainbow-text:hover {
+    background: linear-gradient(90deg, #ff6b6b, #a29bfe, #54a0ff, #7c3aed, #ff6b6b, #a29bfe, #54a0ff, #7c3aed);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rainbowShift 0.625s ease-in-out infinite alternate;
+  }
+}
+
+/* WaveSurfer Shadow DOM Styling */
+::part(region-handle) {
+  width: 12px !important;
+  background-color: #ffffff !important;
+  opacity: 1 !important;
+  border-radius: 4px;
+}
+
+::part(region-handle-left) {
+  border-right: 2px solid rgba(0,0,0,0.8);
+}
+
+::part(region-handle-right) {
+  border-left: 2px solid rgba(0,0,0,0.8);
 }

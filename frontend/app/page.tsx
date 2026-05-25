@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, Music2, Loader2, Disc } from 'lucide-react';
+import { Search, Music2, Disc, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MusicService, Song } from '../services/api';
 import WaveformPlayer from '../components/WaveformPlayer';
+import { SongCardSkeleton } from '../components/ui/Skeleton';
+import { EmptyState } from '../components/ui/EmptyState';
+import toast from 'react-hot-toast';
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([]);
@@ -26,6 +29,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to load songs:', error);
+      toast.error('Failed to load music library.');
     } finally {
       setIsLoading(false);
     }
@@ -34,12 +38,9 @@ export default function Home() {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    
-    // Debounce basic implementation
     const timeoutId = setTimeout(() => {
       loadSongs(query);
     }, 500);
-    
     return () => clearTimeout(timeoutId);
   };
 
@@ -50,97 +51,115 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen p-8 md:p-12 lg:p-16 max-w-7xl mx-auto">
+    <main className="min-h-screen p-6 md:p-12 lg:p-16 max-w-[1400px] mx-auto relative z-10 bg-black">
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight flex items-center gap-3">
-            <span className="text-primary"><Disc className="w-10 h-10 animate-[spin_10s_linear_infinite]" /></span>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-8">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex-1"
+        >
+          <h1 className="text-5xl md:text-6xl font-black tracking-tighter flex items-center gap-4 text-white hover-rainbow-text cursor-default">
+            <div className="relative w-14 h-14 rounded-full border-2 border-current flex items-center justify-center">
+              <Disc className="w-8 h-8 animate-[spin_10s_linear_infinite]" />
+            </div>
             TuneSlice
           </h1>
-          <p className="text-zinc-400 mt-2 text-lg">Select a track and create your custom 30-second masterpiece.</p>
-        </div>
+          <p className="text-zinc-400 mt-4 text-lg font-medium max-w-md leading-relaxed tracking-tight">
+            Select a track and create your custom 30-second masterpiece.
+          </p>
+        </motion.div>
 
-        <div className="relative w-full md:w-96 group">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-zinc-500 group-focus-within:text-primary transition-colors" />
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="relative w-full md:w-[400px] group"
+        >
+          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-white" />
           </div>
           <input
             type="text"
-            className="w-full pl-12 pr-4 py-4 bg-zinc-900/80 border border-zinc-800 rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all shadow-lg"
-            placeholder="Search for songs or artists..."
+            className="dialed-input w-full pl-14 pr-6 py-4 text-lg h-[65px]"
+            placeholder="Search artists or tracks..."
             value={searchQuery}
             onChange={handleSearch}
           />
-        </div>
+        </motion.div>
       </header>
 
       {/* Main Content */}
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center h-64 text-primary">
-          <Loader2 className="w-10 h-10 animate-spin mb-4" />
-          <p className="text-zinc-400">Loading library...</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {songs.length > 0 ? (
-            songs.map((song, index) => (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                key={song.id}
-                onClick={() => setSelectedSong(song)}
-                className="group cursor-pointer glass-panel rounded-2xl overflow-hidden hover:bg-zinc-800/50 hover:-translate-y-1 transition-all duration-300"
-              >
-                <div className="relative aspect-square overflow-hidden bg-zinc-800">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
+        {isLoading ? (
+          Array.from({ length: 10 }).map((_, i) => <SongCardSkeleton key={i} />)
+        ) : songs.length > 0 ? (
+          songs.map((song, index) => (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              key={song.id}
+              onClick={() => setSelectedSong(song)}
+              className="dialed-card group cursor-pointer rounded-[24px] overflow-hidden flex flex-col"
+            >
+              <div className="relative aspect-square w-full p-3 pb-0">
+                <div className="w-full h-full relative rounded-[16px] overflow-hidden bg-zinc-900 border border-white/10">
                   {song.thumbnail_url ? (
                     <img 
                       src={`http://localhost:8000${song.thumbnail_url}`} 
                       alt={song.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Music2 className="w-12 h-12 text-zinc-600" />
+                    <div className="w-full h-full flex items-center justify-center bg-[#111]">
+                      <Music2 className="w-12 h-12 text-zinc-700" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center transform translate-y-4 group-hover:translate-y-0 transition-all shadow-xl">
-                      <Disc className="w-7 h-7 text-black" />
+                  {/* Hover Play Overlay */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform duration-150 group-active:scale-95">
+                      <Play className="w-8 h-8 text-black ml-1" fill="currentColor" />
                     </div>
                   </div>
                 </div>
-                
-                <div className="p-4">
+              </div>
+              
+              <div className="p-5 flex-1 flex flex-col justify-between">
+                <div>
                   <h3 className="font-bold text-lg text-white truncate mb-1">{song.title}</h3>
-                  <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
-                  <p className="text-xs text-zinc-600 mt-2 font-medium">{formatDuration(song.duration)}</p>
+                  <p className="text-sm text-zinc-400 truncate font-medium">{song.artist}</p>
                 </div>
-              </motion.div>
-            ))
-          ) : (
-            <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
-              <Music2 className="w-16 h-16 text-zinc-700 mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">No songs found</h3>
-              <p className="text-zinc-400">Try adjusting your search or add more songs to your library.</p>
-            </div>
-          )}
-        </div>
-      )}
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="text-xs py-1 px-3 rounded-full bg-white/10 text-white font-medium tracking-tight">
+                    {formatDuration(song.duration)}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          ))
+        ) : (
+          <div className="col-span-full">
+            <EmptyState 
+              icon={Music2} 
+              title="No tracks found" 
+              description={searchQuery ? `We couldn't find anything for "${searchQuery}".` : "Your music library is currently empty. Drop some songs in the /songs folder to begin."} 
+            />
+          </div>
+        )}
+      </div>
 
       {/* Overlay Waveform Studio */}
       <AnimatePresence>
         {selectedSong && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-12">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-12 overflow-hidden">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
               onClick={() => setSelectedSong(null)}
             />
-            <div className="relative z-10 w-full">
+            <div className="relative z-10 w-full max-w-5xl">
               <WaveformPlayer 
                 song={selectedSong} 
                 onClose={() => setSelectedSong(null)} 

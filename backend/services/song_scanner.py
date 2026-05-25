@@ -51,7 +51,7 @@ def get_audio_duration(file_url: str) -> float:
         return float(duration_str)
     except Exception as e:
         logger.error(f"Failed to extract duration for {file_url} using ffprobe: {e}")
-        raise
+        return None
 
 def parse_filename(filename: str) -> tuple[str, str]:
     """
@@ -116,7 +116,7 @@ async def sync_songs(db: Session) -> dict:
                 
                 filename = public_id.split("/")[-1]
                 if filename:
-                    audio_files_list.append((filename, secure_url))
+                    audio_files_list.append((filename, secure_url, resource.get("duration")))
 
     except Exception as e:
         logger.warning(f"Failed to fetch resources from Cloudinary: {e}. Skipping scan.")
@@ -126,14 +126,17 @@ async def sync_songs(db: Session) -> dict:
         logger.info("No audio files found in Cloudinary 'songs/' folder.")
         return results
 
-    for audio_file, full_audio_url in audio_files_list:
+    for audio_file, full_audio_url, cld_duration in audio_files_list:
         results["scanned"] += 1
         
         filename_no_ext, _ = os.path.splitext(audio_file)
 
         try:
-            # 1. Fetch exact duration from ffprobe using the public URL
-            duration = get_audio_duration(full_audio_url)
+            # 1. Fetch exact duration from Cloudinary or fallback to ffprobe
+            if cld_duration:
+                duration = float(cld_duration)
+            else:
+                duration = get_audio_duration(full_audio_url) or 180.0 # Fallback to 3 mins if ffprobe completely fails
 
             # 2. Extract song title and artist names
             title, artist = parse_filename(audio_file)

@@ -45,6 +45,13 @@ def sync_trending_youtube_song():
         'quiet': False,
         'match_filter': yt_dlp.utils.match_filter_func("duration < 600") # Limit to tracks under 10 mins
     }
+    
+    # Clean up any leftover temp files before we begin
+    for f in glob.glob(os.path.join(tmp_dir, "yt_sync_*.mp3")):
+        try:
+            os.remove(f)
+        except:
+            pass
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -59,16 +66,16 @@ def sync_trending_youtube_song():
             else:
                 video_info = info_dict
                 
-            video_id = video_info.get('id')
-            video_title = video_info.get('title')
+            video_id = video_info.get('id', 'unknown_id')
+            video_title = video_info.get('title', 'Unknown Title')
             logger.info(f"Downloaded: {video_title} (ID: {video_id})")
 
-            # yt-dlp creates the mp3 file based on the outtmpl. 
-            # The exact filename will be 'yt_sync_<video_id>.mp3'
-            expected_filepath = os.path.join(tmp_dir, f"yt_sync_{video_id}.mp3")
-            
-            if not os.path.exists(expected_filepath):
-                raise FileNotFoundError(f"Expected to find downloaded file at {expected_filepath} but it is missing.")
+            # Dynamically find the file yt-dlp just created
+            downloaded_files = glob.glob(os.path.join(tmp_dir, "yt_sync_*.mp3"))
+            if not downloaded_files:
+                raise FileNotFoundError("yt-dlp finished but no mp3 file was found in the temp directory.")
+                
+            expected_filepath = downloaded_files[0]
                 
             logger.info("Uploading to Cloudinary in chunks (upload_large)...")
             # Upload to Cloudinary into the 'songs' folder.

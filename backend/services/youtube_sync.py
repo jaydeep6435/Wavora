@@ -41,13 +41,14 @@ def sync_trending_youtube_song():
             'preferredquality': '192',
         }],
         'outtmpl': os.path.join(tmp_dir, 'yt_sync_%(id)s.%(ext)s'),
-        'noplaylist': True,
+        'noplaylist': False,  # Allow it to process the search list
+        'max_downloads': 1,   # But stop after successfully downloading 1 track
         'quiet': False,
         'match_filter': yt_dlp.utils.match_filter_func("duration < 600") # Limit to tracks under 10 mins
     }
     
-    # Clean up any leftover temp files before we begin
-    for f in glob.glob(os.path.join(tmp_dir, "yt_sync_*.mp3")):
+    # Clean up any leftover temp files (including parts or webm) before we begin
+    for f in glob.glob(os.path.join(tmp_dir, "yt_sync_*")):
         try:
             os.remove(f)
         except:
@@ -56,9 +57,9 @@ def sync_trending_youtube_song():
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Search for the top trending music video and download it
-            # scsearch1: searches SoundCloud to completely bypass YouTube's datacenter IP block
+            # scsearch15: grabs top 15 results. It will skip long DJ mixes and download the first valid one.
             logger.info("Searching and downloading from SoundCloud...")
-            info_dict = ydl.extract_info("scsearch1:trending pop", download=True)
+            info_dict = ydl.extract_info("scsearch15:trending pop", download=True)
             
             # extract_info returns a dictionary. Since it's a search, the actual video is in 'entries'
             if 'entries' in info_dict and len(info_dict['entries']) > 0:

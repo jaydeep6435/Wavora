@@ -101,9 +101,12 @@ export default function Home() {
           animate={{ opacity: 1, x: 0 }}
           className="flex-1"
         >
-          <h1 className="text-5xl md:text-6xl font-black tracking-tighter flex items-center gap-4 text-white hover-rainbow-text cursor-default">
-            <div className="relative w-14 h-14 rounded-full border-2 border-current flex items-center justify-center">
-              <Disc className="w-8 h-8 animate-[spin_10s_linear_infinite]" />
+          <h1 className="text-5xl md:text-6xl font-black tracking-tighter flex items-center gap-4 text-white hover-rainbow-text cursor-default group">
+            <div className="relative w-14 h-14 flex items-center justify-center">
+              <svg className="w-12 h-12 text-white group-hover:scale-110 transition-transform duration-500 ease-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" className="opacity-20" />
+                <path d="M2 12h4l2.5 -5 3 10 3 -8 2.5 3h5" className="animate-[pulse_3s_ease-in-out_infinite]" />
+              </svg>
             </div>
             Wavora
           </h1>

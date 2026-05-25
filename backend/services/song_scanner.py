@@ -95,26 +95,38 @@ async def sync_songs(db: Session) -> dict:
         # Try scanning lowercase 'songs' bucket
         try:
             res_songs = supabase.storage.from_("songs").list()
+            logger.info(f"[DEBUG] Raw response from 'songs' bucket list(): {res_songs}")
             if isinstance(res_songs, list):
+                logger.info(f"[DEBUG] 'songs' bucket returned {len(res_songs)} item(s)")
                 for f in res_songs:
                     name = f.get("name")
-                    if name and name.lower().endswith(".mp3"):
+                    passes_filter = bool(name and name.lower().endswith(".mp3"))
+                    logger.info(f"[DEBUG] 'songs' bucket file: name={name!r}, passes .mp3 filter={passes_filter}")
+                    if passes_filter:
                         audio_files_map[name] = "songs"
             elif isinstance(res_songs, dict) and "error" in res_songs:
                 logger.info(f"Could not list from 'songs' bucket (returned dict error): {res_songs}")
+            else:
+                logger.info(f"[DEBUG] 'songs' bucket list() returned unexpected type: {type(res_songs)}")
         except Exception as e:
             logger.info(f"Could not list from 'songs' bucket: {e}")
 
         # Try scanning capitalized 'Songs' bucket
         try:
             res_Songs = supabase.storage.from_("Songs").list()
+            logger.info(f"[DEBUG] Raw response from 'Songs' bucket list(): {res_Songs}")
             if isinstance(res_Songs, list):
+                logger.info(f"[DEBUG] 'Songs' bucket returned {len(res_Songs)} item(s)")
                 for f in res_Songs:
                     name = f.get("name")
-                    if name and name.lower().endswith(".mp3"):
+                    passes_filter = bool(name and name.lower().endswith(".mp3"))
+                    logger.info(f"[DEBUG] 'Songs' bucket file: name={name!r}, passes .mp3 filter={passes_filter}")
+                    if passes_filter:
                         audio_files_map[name] = "Songs"
             elif isinstance(res_Songs, dict) and "error" in res_Songs:
                 logger.info(f"Could not list from 'Songs' bucket (returned dict error): {res_Songs}")
+            else:
+                logger.info(f"[DEBUG] 'Songs' bucket list() returned unexpected type: {type(res_Songs)}")
         except Exception as e:
             logger.info(f"Could not list from 'Songs' bucket: {e}")
 

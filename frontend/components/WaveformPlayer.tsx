@@ -94,6 +94,14 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
     ws.on('audioprocess', (time) => {
       if (!isCancelled) setCurrentTime(time);
+      
+      // Loop within region if playing
+      const region = regionsRef.current?.getRegions()[0];
+      if (region && ws.isPlaying()) {
+        if (time >= region.end) {
+          ws.setTime(region.start);
+        }
+      }
     });
 
     ws.on('timeupdate', (time) => {
@@ -130,7 +138,18 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
   const togglePlayback = () => {
     if (wavesurferRef.current) {
-      wavesurferRef.current.playPause();
+      const ws = wavesurferRef.current;
+      const region = regionsRef.current?.getRegions()[0];
+      
+      // If we are about to play, and the cursor is outside the clip, jump to the start of the clip
+      if (!isPlaying && region) {
+        const currentTime = ws.getCurrentTime();
+        if (currentTime < region.start || currentTime >= region.end) {
+          ws.setTime(region.start);
+        }
+      }
+      
+      ws.playPause();
     }
   };
 

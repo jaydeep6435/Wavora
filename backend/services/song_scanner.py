@@ -89,16 +89,23 @@ async def sync_songs(db: Session) -> dict:
 
     try:
         supabase = get_supabase_client()
-        # List all files in the 'songs' bucket
-        files_response = supabase.storage.from_("songs").list()
-        # Note: supabase-py v2+ returns a list of dictionaries directly
+        # List all files in the bucket - check lowercase 'songs' first, fallback to 'Songs'
+        bucket_name = "songs"
+        try:
+            files_response = supabase.storage.from_(bucket_name).list()
+            if isinstance(files_response, dict) and "error" in files_response:
+                raise ValueError(files_response["error"])
+        except Exception:
+            bucket_name = "Songs"
+            files_response = supabase.storage.from_(bucket_name).list()
+
         audio_files = [f["name"] for f in files_response if f["name"].lower().endswith(".mp3")]
     except Exception as e:
-        logger.warning(f"Failed to access Supabase songs bucket: {e}. Skipping scan.")
+        logger.warning(f"Failed to access Supabase songs bucket (tried 'songs' and 'Songs'): {e}. Skipping scan.")
         return results
 
     if not audio_files:
-        logger.info("No audio files found in Supabase 'songs' bucket.")
+        logger.info(f"No audio files found in Supabase '{bucket_name}' bucket.")
         return results
 
     for audio_file in audio_files:
@@ -106,11 +113,11 @@ async def sync_songs(db: Session) -> dict:
         
         # Get public URL for the song
         try:
-            public_url_res = supabase.storage.from_("songs").get_public_url(audio_file)
+            public_url_res = supabase.storage.from_(bucket_name).get_public_url(audio_file)
             # In supabase-py v2, get_public_url returns the string directly
             full_audio_url = public_url_res
         except Exception as e:
-            logger.error(f"Could not get public URL for {audio_file}: {e}")
+            logger.error(f"Could not get public URL for {audio_file} from bucket {bucket_name}: {e}")
             results["failed"] += 1
             continue
 

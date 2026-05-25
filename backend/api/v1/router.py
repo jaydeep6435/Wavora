@@ -9,7 +9,7 @@ from schemas.song import SongResponse
 from schemas.clip import ClipGenerateRequest
 from typing import List
 from services.audio_clipper import slice_audio_async
-from services.song_scanner import get_supabase_client, sync_songs
+from services.song_scanner import sync_songs
 
 logger = logging.getLogger("wavora.router")
 api_router = APIRouter()

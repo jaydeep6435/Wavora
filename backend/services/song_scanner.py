@@ -98,25 +98,25 @@ async def sync_songs(db: Session) -> dict:
     try:
         configure_cloudinary()
         
-        # Cloudinary treats audio files as 'video' resource type
-        response = cloudinary.api.resources(
-            resource_type="video",
-            type="upload",
-            prefix="songs/",
-            max_results=500
-        )
+        # Cloudinary treats API audio uploads as 'video', but manual web dashboard uploads might be 'raw'
+        audio_files_list = []
         
-        resources = response.get("resources", [])
-        for resource in resources:
-            public_id = resource.get("public_id")
-            secure_url = resource.get("secure_url")
+        for r_type in ["video", "raw"]:
+            response = cloudinary.api.resources(
+                resource_type=r_type,
+                type="upload",
+                prefix="songs/",
+                max_results=500
+            )
             
-            # Extract just the filename from the public_id (e.g., songs/my_song -> my_song)
-            filename = public_id.split("/")[-1]
-            
-            # Since Cloudinary doesn't strictly enforce extensions in public_id, we just use the ID
-            if filename:
-                audio_files_list.append((filename, secure_url))
+            resources = response.get("resources", [])
+            for resource in resources:
+                public_id = resource.get("public_id")
+                secure_url = resource.get("secure_url")
+                
+                filename = public_id.split("/")[-1]
+                if filename:
+                    audio_files_list.append((filename, secure_url))
 
     except Exception as e:
         logger.warning(f"Failed to fetch resources from Cloudinary: {e}. Skipping scan.")

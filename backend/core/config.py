@@ -21,9 +21,10 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/postgres"
     
-    # Supabase Settings
-    SUPABASE_URL: str = ""
-    SUPABASE_KEY: str = ""
+    # Cloudinary Settings
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
     # Base Media Storage Directories
     SONGS_DIR: str = "../songs"
     CLIPS_DIR: str = "../clips"

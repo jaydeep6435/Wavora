@@ -4,8 +4,12 @@ from fastapi.staticfiles import StaticFiles
 from core.config import settings
 from api.v1.router import api_router
 import os
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from services.youtube_sync import sync_trending_youtube_song
 
 from contextlib import asynccontextmanager
+
+scheduler = AsyncIOScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,10 +30,13 @@ async def lifespan(app: FastAPI):
         logging.getLogger("wavora.main").error(f"Startup song scanning sync failed: {e}")
     finally:
         db.close()
+    # 3. Start APScheduler for YouTube Sync
+    scheduler.add_job(sync_trending_youtube_song, 'cron', hour=0, minute=0)
+    scheduler.start()
 
     yield
     # Shutdown actions (if any)
-
+    scheduler.shutdown()
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",

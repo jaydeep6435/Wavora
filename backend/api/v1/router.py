@@ -14,10 +14,10 @@ from services.song_scanner import get_supabase_client, sync_songs
 logger = logging.getLogger("wavora.router")
 api_router = APIRouter()
 
-@api_router.post("/sync", summary="Force sync library with Supabase")
+@api_router.post("/sync", summary="Force sync library with Cloudinary")
 async def force_sync(db: Session = Depends(get_db)):
     """
-    Manually trigger a bucket scan to find new songs in Supabase and sync them to the database.
+    Manually trigger a scan to find new songs in Cloudinary and sync them to the database.
     """
     try:
         results = await sync_songs(db)
@@ -26,11 +26,36 @@ async def force_sync(db: Session = Depends(get_db)):
         logger.error(f"Manual sync failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+from services.youtube_sync import sync_trending_youtube_song
+
+@api_router.post("/youtube-sync/force", summary="Force sync trending song from YouTube")
+async def force_youtube_sync(db: Session = Depends(get_db)):
+    """
+    Manually trigger the background job that downloads a trending YouTube song, 
+    uploads it to Cloudinary, and then syncs the database.
+    """
+    try:
+        # Run the download & upload to Cloudinary
+        yt_result = sync_trending_youtube_song()
+        if not yt_result.get("success"):
+            raise Exception(yt_result.get("error"))
+            
+        # Trigger DB sync so the new song shows up
+        db_results = await sync_songs(db)
+        return {
+            "success": True, 
+            "youtube": yt_result,
+            "database_sync": db_results
+        }
+    except Exception as e:
+        logger.error(f"Manual YouTube sync failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 def map_song_to_response(song: Song) -> SongResponse:
     """
     Utility mapper that reads a database Song model and computes relative 
     web-accessible URLs for raw audio streaming and artwork.
-    For Supabase, the audio_path and thumbnail_path are already public URLs.
+    For Cloudinary, the audio_path and thumbnail_path are already public URLs.
     """
     return SongResponse(
         id=song.id,

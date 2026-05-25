@@ -5,16 +5,22 @@ import logging
 from sqlalchemy.orm import Session
 from core.config import settings
 from models.song import Song
-from supabase import create_client, Client
+import cloudinary
+import cloudinary.api
 
 # Configure logging
 logger = logging.getLogger("wavora.scanner")
 logging.basicConfig(level=logging.INFO)
 
-def get_supabase_client() -> Client:
-    if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-        raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in .env")
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+def configure_cloudinary():
+    if not settings.CLOUDINARY_CLOUD_NAME or not settings.CLOUDINARY_API_KEY:
+        raise ValueError("Cloudinary credentials must be set in .env")
+    cloudinary.config(
+        cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+        api_key=settings.CLOUDINARY_API_KEY,
+        api_secret=settings.CLOUDINARY_API_SECRET,
+        secure=True
+    )
 
 def get_audio_duration(file_url: str) -> float:
     """
@@ -81,64 +87,48 @@ def parse_filename(filename: str) -> tuple[str, str]:
 
 async def sync_songs(db: Session) -> dict:
     """
-    Main sync scanner service. Connects to Supabase Storage, processes
-    each audio file in the 'songs' bucket, resolves dependencies, and saves details to DB.
+    Main sync scanner service. Connects to Cloudinary, processes
+    each audio file in the 'songs' folder, resolves dependencies, and saves details to DB.
     """
-    logger.info(f"Connecting to Supabase to scan 'songs' bucket")
+    logger.info(f"Connecting to Cloudinary to scan 'songs/' folder")
     results = {"scanned": 0, "added": 0, "updated": 0, "failed": 0}
 
-    audio_files_map = {} # Maps audio_file_name -> bucket_name
+    audio_files_list = [] # List of tuples: (filename, secure_url)
 
     try:
-        supabase = get_supabase_client()
+        configure_cloudinary()
         
-        # Try scanning lowercase 'songs' bucket
-        try:
-            res_songs = supabase.storage.from_("songs").list()
-            if isinstance(res_songs, list):
-                for f in res_songs:
-                    name = f.get("name")
-                    if name and name.lower().endswith(".mp3"):
-                        audio_files_map[name] = "songs"
-            elif isinstance(res_songs, dict) and "error" in res_songs:
-                logger.info(f"Could not list from 'songs' bucket (returned dict error): {res_songs}")
-        except Exception as e:
-            logger.info(f"Could not list from 'songs' bucket: {e}")
-
-        # Try scanning capitalized 'Songs' bucket
-        try:
-            res_Songs = supabase.storage.from_("Songs").list()
-            if isinstance(res_Songs, list):
-                for f in res_Songs:
-                    name = f.get("name")
-                    if name and name.lower().endswith(".mp3"):
-                        audio_files_map[name] = "Songs"
-            elif isinstance(res_Songs, dict) and "error" in res_Songs:
-                logger.info(f"Could not list from 'Songs' bucket (returned dict error): {res_Songs}")
-        except Exception as e:
-            logger.info(f"Could not list from 'Songs' bucket: {e}")
+        # Cloudinary treats audio files as 'video' resource type
+        response = cloudinary.api.resources(
+            resource_type="video",
+            type="upload",
+            prefix="songs/",
+            max_results=500
+        )
+        
+        resources = response.get("resources", [])
+        for resource in resources:
+            public_id = resource.get("public_id")
+            secure_url = resource.get("secure_url")
+            
+            # Extract just the filename from the public_id (e.g., songs/my_song -> my_song)
+            filename = public_id.split("/")[-1]
+            
+            # Since Cloudinary doesn't strictly enforce extensions in public_id, we just use the ID
+            if filename:
+                audio_files_list.append((filename, secure_url))
 
     except Exception as e:
-        logger.warning(f"Failed to initialize Supabase client for bucket scan: {e}. Skipping scan.")
+        logger.warning(f"Failed to fetch resources from Cloudinary: {e}. Skipping scan.")
         return results
 
-    if not audio_files_map:
-        logger.info("No audio files found in Supabase 'songs' or 'Songs' buckets.")
+    if not audio_files_list:
+        logger.info("No audio files found in Cloudinary 'songs/' folder.")
         return results
 
-    for audio_file, bucket_name in audio_files_map.items():
+    for audio_file, full_audio_url in audio_files_list:
         results["scanned"] += 1
         
-        # Get public URL for the song
-        try:
-            public_url_res = supabase.storage.from_(bucket_name).get_public_url(audio_file)
-            # In supabase-py v2, get_public_url returns the string directly
-            full_audio_url = public_url_res
-        except Exception as e:
-            logger.error(f"Could not get public URL for {audio_file} from bucket {bucket_name}: {e}")
-            results["failed"] += 1
-            continue
-
         filename_no_ext, _ = os.path.splitext(audio_file)
 
         try:

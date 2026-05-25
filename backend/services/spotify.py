@@ -17,11 +17,15 @@ class SpotifyService:
         """Deprecated: No longer needed for iTunes API."""
         return None
 
-    async def search_track_thumbnail(self, title: str, artist: str) -> str | None:
-        """Search iTunes for the track and return the highest resolution thumbnail URL."""
-        # Clean up the search query slightly
+    async def search_track_thumbnail(self, title: str, artist: str) -> dict | None:
+        """Search iTunes for the track and return official metadata and thumbnail URL."""
         clean_title = title.split("(")[0].strip() # Remove (feat. X) or (Live)
-        query = f"{clean_title} {artist}"
+        
+        # If the file didn't have a dash, artist is "Unknown Artist", which ruins the search
+        if artist.lower() == "unknown artist":
+            query = clean_title
+        else:
+            query = f"{clean_title} {artist}"
         
         params = {
             "term": query,
@@ -38,7 +42,7 @@ class SpotifyService:
                 
                 results = data.get("results", [])
                 if not results:
-                    logger.info(f"No track found for {title} - {artist} on iTunes")
+                    logger.info(f"No track found for {query} on iTunes")
                     return None
                 
                 track = results[0]
@@ -46,11 +50,15 @@ class SpotifyService:
                 if not artwork_url:
                     return None
                     
-                # iTunes returns 100x100 artwork by default, replace it with 600x600 for high quality!
                 best_image_url = artwork_url.replace("100x100bb", "600x600bb")
-                return best_image_url
+                
+                return {
+                    "thumbnail_url": best_image_url,
+                    "title": track.get("trackName"),
+                    "artist": track.get("artistName")
+                }
         except Exception as e:
-            logger.error(f"Failed to search track {title} - {artist}: {e}")
+            logger.error(f"Failed to search track {query}: {e}")
             return None
 
     async def download_thumbnail(self, url: str, filename_no_ext: str, thumbnails_dir: str) -> str | None:

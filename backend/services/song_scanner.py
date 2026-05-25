@@ -148,13 +148,21 @@ async def sync_songs(db: Session) -> dict:
             # 2. Extract song title and artist names
             title, artist = parse_filename(audio_file)
 
-            # 3. Try fetching thumbnail from Spotify
+            # 3. Try fetching thumbnail and official metadata from iTunes
             thumbnail_url = None
             from services.spotify import spotify_service
-            logger.info(f"Fetching thumbnail for {title} from Spotify...")
-            spotify_url = await spotify_service.search_track_thumbnail(title, artist)
-            if spotify_url:
-                thumbnail_url = spotify_url # Save the remote URL directly in DB
+            logger.info(f"Fetching metadata for {title} from iTunes...")
+            itunes_data = await spotify_service.search_track_thumbnail(title, artist)
+            if itunes_data:
+                thumbnail_url = itunes_data.get("thumbnail_url")
+                
+                # Intelligent overwrite: use official iTunes title and artist to fix messy filenames
+                official_title = itunes_data.get("title")
+                official_artist = itunes_data.get("artist")
+                if official_title:
+                    title = official_title
+                if official_artist:
+                    artist = official_artist
 
             # 4. Check if song already exists in the database
             existing_song = db.query(Song).filter(Song.audio_path == full_audio_url).first()

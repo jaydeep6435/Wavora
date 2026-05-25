@@ -1,11 +1,11 @@
 <div align="center">
-  <img src="./frontend/public/file.svg" alt="TuneSlice Logo" width="120" />
+  <img src="./frontend/public/file.svg" alt="Wavora Logo" width="120" />
 
-  # TuneSlice
+  # Wavora
 
   **A modern, premium audio-clipping web application**
   
-  <p>TuneSlice allows you to visually explore songs, select precise 30-second regions via an interactive waveform, and instantly generate high-quality audio clips. Built with a production-ready stack and a Dialed.gg-inspired glassmorphism aesthetic.</p>
+  <p>Wavora allows you to visually explore songs, select precise 30-second regions via an interactive waveform, and instantly generate high-quality audio clips. Built with a production-ready stack and a Dialed.gg-inspired glassmorphism aesthetic.</p>
 
   [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)

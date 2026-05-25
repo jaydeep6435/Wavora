@@ -8,7 +8,7 @@ from models.song import Song
 from supabase import create_client, Client
 
 # Configure logging
-logger = logging.getLogger("tuneslice.scanner")
+logger = logging.getLogger("wavora.scanner")
 logging.basicConfig(level=logging.INFO)
 
 def get_supabase_client() -> Client:

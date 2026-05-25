@@ -4,7 +4,7 @@ import shutil
 import logging
 import subprocess
 
-logger = logging.getLogger("tuneslice.clipper")
+logger = logging.getLogger("wavora.clipper")
 
 async def slice_audio_async(
     input_path: str, 

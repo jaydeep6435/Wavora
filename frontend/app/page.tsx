@@ -105,7 +105,7 @@ export default function Home() {
             <div className="relative w-14 h-14 rounded-full border-2 border-current flex items-center justify-center">
               <Disc className="w-8 h-8 animate-[spin_10s_linear_infinite]" />
             </div>
-            TuneSlice
+            Wavora
           </h1>
           <p className="text-zinc-400 mt-4 text-lg font-medium max-w-md leading-relaxed tracking-tight">
             Select a track and create your custom 30-second masterpiece.

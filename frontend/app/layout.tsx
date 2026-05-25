@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TuneSlice — Waveform Song Snippet Generator",
+  title: "Wavora — Waveform Song Snippet Generator",
   description: "A professional, interactive waveform editor to visually slice, preview, and generate high-quality 30-second clips from your favorite songs.",
 };
 

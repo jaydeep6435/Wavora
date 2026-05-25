@@ -5,7 +5,7 @@ import os
 import asyncio
 from core.config import settings
 
-logger = logging.getLogger("tuneslice.spotify")
+logger = logging.getLogger("wavora.spotify")
 
 class SpotifyService:
     def __init__(self):

@@ -4,7 +4,7 @@ from typing import List, Union
 import json
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "TuneSlice"
+    PROJECT_NAME: str = "Wavora"
     API_V1_STR: str = "/api/v1"
     
     # CORS Origins - Parse comma-separated string or JSON array from environment

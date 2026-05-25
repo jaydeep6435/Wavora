@@ -11,7 +11,7 @@ from typing import List
 from services.audio_clipper import slice_audio_async
 from services.song_scanner import get_supabase_client, sync_songs
 
-logger = logging.getLogger("tuneslice.router")
+logger = logging.getLogger("wavora.router")
 api_router = APIRouter()
 
 @api_router.post("/sync", summary="Force sync library with Supabase")

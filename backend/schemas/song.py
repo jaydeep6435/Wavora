@@ -25,8 +25,8 @@ class SongResponse(SongBase):
                 "id": 1,
                 "title": "Believer",
                 "artist": "Imagine Dragons",
-                "audio_path": "E:\\TuneSlicer\\songs\\believer-imagine_dragons.mp3",
-                "thumbnail_path": "E:\\TuneSlicer\\thumbnails\\believer-imagine_dragons.jpg",
+                "audio_path": "E:\\Wavorar\\songs\\believer-imagine_dragons.mp3",
+                "thumbnail_path": "E:\\Wavorar\\thumbnails\\believer-imagine_dragons.jpg",
                 "duration": 204.5,
                 "audio_url": "/songs/believer-imagine_dragons.mp3",
                 "thumbnail_url": "/thumbnails/believer-imagine_dragons.jpg"

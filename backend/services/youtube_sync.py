@@ -42,7 +42,8 @@ def sync_trending_youtube_song():
         }],
         'outtmpl': os.path.join(tmp_dir, 'yt_sync_%(id)s.%(ext)s'),
         'noplaylist': True,
-        'quiet': False
+        'quiet': False,
+        'match_filter': yt_dlp.utils.match_filter_func("duration < 600") # Limit to tracks under 10 mins
     }
 
     try:
@@ -69,10 +70,10 @@ def sync_trending_youtube_song():
             if not os.path.exists(expected_filepath):
                 raise FileNotFoundError(f"Expected to find downloaded file at {expected_filepath} but it is missing.")
                 
-            logger.info("Uploading to Cloudinary...")
+            logger.info("Uploading to Cloudinary in chunks (upload_large)...")
             # Upload to Cloudinary into the 'songs' folder.
-            # We set resource_type='video' because Cloudinary treats audio as video.
-            upload_result = cloudinary.uploader.upload(
+            # Using upload_large handles big files and prevents '413 Request Entity Too Large'
+            upload_result = cloudinary.uploader.upload_large(
                 expected_filepath,
                 resource_type="video",
                 folder="songs/",

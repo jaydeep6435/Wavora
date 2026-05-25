@@ -203,7 +203,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.98 }}
       transition={{ duration: 0.2 }}
-      className="bg-black rounded-[32px] p-6 md:p-10 w-full mx-auto relative border-2 border-white/20"
+      className="bg-black/40 backdrop-blur-2xl rounded-[32px] p-6 md:p-10 w-full mx-auto relative border border-white/10 shadow-2xl"
     >
       <button 
         onClick={onClose}
@@ -233,7 +233,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
         </div>
       </div>
 
-      <div className="bg-[#111] rounded-2xl p-6 mb-8 border border-white/10 relative overflow-hidden">
+      <div className="bg-black/20 rounded-2xl p-6 mb-8 border border-white/5 relative overflow-hidden">
         {!isReady && (
           <div className="h-[140px] flex flex-col items-center justify-center text-white gap-3">
             <Loader2 className="w-8 h-8 animate-spin" />

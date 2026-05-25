@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, Music2, Disc, Play } from 'lucide-react';
+import { Search, Music2, Disc, Play, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MusicService, Song } from '../services/api';
 import WaveformPlayer from '../components/WaveformPlayer';
@@ -15,6 +15,23 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [hoveredSong, setHoveredSong] = useState<Song | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await MusicService.syncLibrary();
+      if (result.success) {
+        toast.success(`Synced! Added ${result.results.added} new tracks.`);
+        await loadSongs();
+      }
+    } catch (error) {
+      toast.error('Failed to sync library.');
+      console.error(error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   useEffect(() => {
     loadSongs();
@@ -98,18 +115,29 @@ export default function Home() {
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="relative w-full md:w-[400px] group"
+          className="flex items-center gap-4 w-full md:w-auto"
         >
-          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-white" />
+          <div className="relative w-full md:w-[400px] group">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-white" />
+            </div>
+            <input
+              type="text"
+              className="dialed-input w-full pl-14 pr-6 py-4 text-lg h-[65px]"
+              placeholder="Search artists or tracks..."
+              value={searchQuery}
+              onChange={handleSearch}
+            />
           </div>
-          <input
-            type="text"
-            className="dialed-input w-full pl-14 pr-6 py-4 text-lg h-[65px]"
-            placeholder="Search artists or tracks..."
-            value={searchQuery}
-            onChange={handleSearch}
-          />
+          
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing}
+            className={`h-[65px] px-6 rounded-[58px] border-2 ${isSyncing ? 'border-[#14b861] text-[#14b861]' : 'border-white/20 text-white hover:border-white'} font-medium flex items-center justify-center transition-all bg-black`}
+            title="Sync new songs from Supabase"
+          >
+            <RefreshCw className={`w-6 h-6 ${isSyncing ? 'animate-spin' : ''}`} />
+          </button>
         </motion.div>
       </header>
 

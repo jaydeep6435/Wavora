@@ -47,5 +47,11 @@ export const MusicService = {
   async generateClip(request: ClipRequest): Promise<ClipResponse> {
     const response = await api.post<ClipResponse>('/generate-clip', request);
     return response.data;
+  },
+
+  // Manually trigger a bucket scan to find new songs
+  async syncLibrary(): Promise<{ success: boolean; results: any }> {
+    const response = await api.post<{ success: boolean; results: any }>('/sync');
+    return response.data;
   }
 };

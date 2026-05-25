@@ -9,10 +9,22 @@ from schemas.song import SongResponse
 from schemas.clip import ClipGenerateRequest
 from typing import List
 from services.audio_clipper import slice_audio_async
-from services.song_scanner import get_supabase_client
+from services.song_scanner import get_supabase_client, sync_songs
 
 logger = logging.getLogger("tuneslice.router")
 api_router = APIRouter()
+
+@api_router.post("/sync", summary="Force sync library with Supabase")
+async def force_sync(db: Session = Depends(get_db)):
+    """
+    Manually trigger a bucket scan to find new songs in Supabase and sync them to the database.
+    """
+    try:
+        results = await sync_songs(db)
+        return {"success": True, "results": results}
+    except Exception as e:
+        logger.error(f"Manual sync failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 def map_song_to_response(song: Song) -> SongResponse:
     """

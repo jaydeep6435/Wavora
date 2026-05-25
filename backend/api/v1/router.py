@@ -115,30 +115,31 @@ async def generate_clip(
             detail=f"FFmpeg audio processing failed: {str(e)}"
         )
 
-    # 5. Upload the clip to Supabase Storage
+    import base64
+
+    # 5. Read the generated clip file and encode to base64 data URL
     try:
-        supabase = get_supabase_client()
         with open(output_path, 'rb') as f:
-            res = supabase.storage.from_("clips").upload(clip_filename, f, {"content-type": "audio/mpeg"})
-            
-        public_url = supabase.storage.from_("clips").get_public_url(clip_filename)
+            file_content = f.read()
+            base64_content = base64.b64encode(file_content).decode('utf-8')
+            clip_data_url = f"data:audio/mp3;base64,{base64_content}"
     except Exception as e:
-        logger.error(f"Supabase upload failed: {e}")
+        logger.error(f"Failed to read/encode generated clip: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload clip to storage: {str(e)}"
+            detail=f"Failed to process generated audio clip: {str(e)}"
         )
     finally:
-        # Cleanup the temp file
+        # Cleanup the temp file immediately
         if os.path.exists(output_path):
             try:
                 os.remove(output_path)
             except:
                 pass
 
-    # 6. Return success payload matching requirements exactly
+    # 6. Return success payload with base64 audio data URI
     return {
         "success": True,
-        "clipUrl": public_url,
+        "clipUrl": clip_data_url,
         "duration": round(request.end_time - request.start_time, 2)
     }

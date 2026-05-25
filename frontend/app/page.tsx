@@ -106,7 +106,7 @@ export default function Home() {
                 <div className="w-full h-full relative rounded-[16px] overflow-hidden bg-zinc-900 border border-white/10">
                   {song.thumbnail_url ? (
                     <img 
-                      src={`http://localhost:8000${song.thumbnail_url}`} 
+                      src={song.thumbnail_url.startsWith('http') ? song.thumbnail_url : `http://localhost:8000${song.thumbnail_url}`} 
                       alt={song.title}
                       className="w-full h-full object-cover"
                     />

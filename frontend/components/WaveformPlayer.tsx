@@ -14,6 +14,14 @@ interface WaveformPlayerProps {
 }
 
 export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
+  const getFullUrl = (url: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('http') || url.startsWith('data:')) {
+      return url;
+    }
+    return `http://localhost:8000${url}`;
+  };
+
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const regionsRef = useRef<RegionsPlugin | null>(null);
@@ -48,7 +56,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       barRadius: 3,
       height: 140,
       plugins: [regions],
-      url: `http://localhost:8000${song.audio_url}`,
+      url: getFullUrl(song.audio_url),
     });
 
     wavesurferRef.current = ws;
@@ -120,7 +128,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
         endTime: Number(selectedRange.end.toFixed(3)),
       });
       
-      setGeneratedClip(`http://localhost:8000${response.clipUrl}`);
+      setGeneratedClip(getFullUrl(response.clipUrl));
       toast.success('Clip generated successfully!', { id: toastId });
     } catch (err) {
       console.error(err);
@@ -170,7 +178,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
         <div className="relative">
           {song.thumbnail_url ? (
             <img 
-              src={`http://localhost:8000${song.thumbnail_url}`} 
+              src={getFullUrl(song.thumbnail_url)} 
               alt={song.title} 
               className="w-28 h-28 rounded-2xl object-cover border border-white/10"
             />

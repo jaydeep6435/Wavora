@@ -5,6 +5,7 @@ import json
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Wavora"
+    ENVIRONMENT: str = "development"
     API_V1_STR: str = "/api/v1"
     
     # CORS Origins - Parse comma-separated string or JSON array from environment

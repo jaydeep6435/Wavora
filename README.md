@@ -56,8 +56,42 @@ npm run dev
 ```
 *Note: The frontend runs on `http://localhost:3000`.*
 
-### 3. Add Your Music
+### 3. Environment Variables
+Create a `.env` file in the `backend` directory. Use `.env.example` as a template:
+```env
+PROJECT_NAME="TuneSlice"
+ENVIRONMENT="development"
+API_V1_STR="/api/v1"
+DATABASE_URL="postgresql://user:password@host/db"
+CLOUDINARY_CLOUD_NAME="..."
+CLOUDINARY_API_KEY="..."
+CLOUDINARY_API_SECRET="..."
+```
+
+### 4. Add Your Music
 Drop any `.mp3` files into the root `/songs` directory. If you have album art, drop a matching `.jpg` or `.png` into `/thumbnails` with the exact same base filename (e.g., `song.mp3` -> `song.jpg`). Restart the backend to automatically sync them.
+
+## 🐳 Docker (Local & Production)
+You can easily spin up the backend using Docker. This ensures FFmpeg and all Python dependencies are perfectly aligned.
+
+### Build the Image
+```bash
+cd backend
+docker build -t tuneslice-backend .
+```
+
+### Run the Container
+```bash
+docker run -p 8000:8000 --env-file .env tuneslice-backend
+```
+
+## 🚂 Railway Deployment
+This project is configured for seamless deployment on Railway using Docker.
+1. Connect your GitHub repository to Railway.
+2. In the Railway dashboard, set the root directory to `/backend` (if you are deploying just the backend service).
+3. Railway will automatically detect the `Dockerfile` and build the container.
+4. Add all environment variables (from `.env.example`) into the Railway Variables dashboard.
+5. Railway will automatically inject a `$PORT` variable which the Dockerfile utilizes.
 
 ## 🗺 API Overview
 - `GET /api/v1/songs` - Retrieve a list of synced songs with pagination.

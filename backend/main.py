@@ -1,9 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from core.config import settings
+from core.logging_config import setup_logging
 from api.v1.router import api_router
+import logging
+from sqlalchemy import text
 import os
+
+# Initialize structured logging
+setup_logging(settings.ENVIRONMENT)
+logger = logging.getLogger("wavora.main")
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from services.youtube_sync import sync_trending_youtube_song
 
@@ -26,8 +33,7 @@ async def lifespan(app: FastAPI):
     try:
         await sync_songs(db)
     except Exception as e:
-        import logging
-        logging.getLogger("wavora.main").error(f"Startup song scanning sync failed: {e}")
+        logger.error(f"Startup song scanning sync failed: {e}")
     finally:
         db.close()
     # 3. Start APScheduler for YouTube Sync
@@ -58,10 +64,44 @@ if settings.BACKEND_CORS_ORIGINS:
 # Register API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+# Global Exception Handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    if settings.ENVIRONMENT == "production":
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error"},
+        )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+    )
+
+# TODO: For production monitoring, integrate tools like Prometheus here:
+# from prometheus_fastapi_instrumentator import Instrumentator
+# Instrumentator().instrument(app).expose(app)
+
 @app.get("/", tags=["Health Check"])
 async def root():
+    db_status = "offline"
+    from db.session import SessionLocal
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db_status = "online"
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+    finally:
+        try:
+            db.close()
+        except:
+            pass
+            
     return {
         "status": "online",
+        "database": db_status,
+        "environment": settings.ENVIRONMENT,
         "project": settings.PROJECT_NAME,
         "docs_url": "/docs",
         "api_v1_url": f"{settings.API_V1_STR}"

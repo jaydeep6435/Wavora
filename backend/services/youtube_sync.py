@@ -54,10 +54,25 @@ def sync_trending_youtube_song():
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Search for the top trending music video and download it
-            # scsearch15: grabs top 15 results. It will skip long DJ mixes and download the first valid one.
+            import random
+            
+            # Diverse list of all Indian cultures to pull trending hits from
+            indian_regions = [
+                "hindi punjabi",
+                "south indian telugu tamil",
+                "marathi",
+                "gujarati garba",
+                "rajasthani",
+                "bhojpuri",
+                "bollywood"
+            ]
+            selected_region = random.choice(indian_regions)
+            
+            search_query = f"scsearch15:latest trending instagram reels songs {selected_region} official music video hit"
+            logger.info(f"Searching YouTube with query: {search_query}")
+            
             # First, fetch search results WITHOUT downloading
-            info_dict = ydl.extract_info("scsearch15:t series official music", download=False)
+            info_dict = ydl.extract_info(search_query, download=False)
             
             target_entry = None
             if 'entries' in info_dict:

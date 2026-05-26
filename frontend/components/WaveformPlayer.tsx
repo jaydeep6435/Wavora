@@ -60,6 +60,11 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
     const isMobile = window.innerWidth < 768;
 
+    // Create a native HTML5 Audio element. This is infinitely more resilient 
+    // to format headers and missing extensions than the strict WebAudio fetch().
+    const audioEl = new Audio(getFullUrl(song.audio_url));
+    audioEl.crossOrigin = 'anonymous';
+
     const ws = WaveSurfer.create({
       container: containerRef.current,
       waveColor: 'rgba(255, 255, 255, 0.2)',
@@ -72,7 +77,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       height: 140,
       minPxPerSec: isMobile ? 50 : 0, // Force scrolling on mobile
       plugins: [regions],
-      url: getFullUrl(song.audio_url),
+      media: audioEl, // Force MediaElement backend
     });
 
     wavesurferRef.current = ws;

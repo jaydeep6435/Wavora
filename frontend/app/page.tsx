@@ -22,7 +22,9 @@ export default function Home() {
     try {
       const result = await MusicService.syncLibrary();
       if (result.success) {
-        toast.success(`Synced! Added ${result.results.added} new tracks.`);
+        let msg = `Synced! Added ${result.results.added} tracks.`;
+        if (result.results.deleted) msg += ` Removed ${result.results.deleted} missing tracks.`;
+        toast.success(msg);
         await loadSongs();
       }
     } catch (error) {

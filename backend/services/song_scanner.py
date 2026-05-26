@@ -203,9 +203,23 @@ async def sync_songs(db: Session) -> dict:
 
         except Exception as e:
             logger.error(f"Error processing audio file {audio_file}: {e}")
-            results["debug"].append(f"Failed {audio_file}: {str(e)}")
             results["failed"] += 1
             db.rollback()
 
-    logger.info(f"Sync complete. Scanned: {results['scanned']}, Added: {results['added']}, Updated: {results['updated']}, Failed: {results['failed']}")
+    # 5. Clean up missing songs from the database
+    # If a song is in the DB as a Cloudinary URL, but was not in the Cloudinary scan, delete it
+    scanned_urls = [url for _, url, _ in audio_files_list]
+    db_songs = db.query(Song).all()
+    deleted_count = 0
+    for db_song in db_songs:
+        if 'res.cloudinary.com' in db_song.audio_path and db_song.audio_path not in scanned_urls:
+            db.delete(db_song)
+            deleted_count += 1
+            logger.info(f"Deleted missing song from database: {db_song.title}")
+    
+    if deleted_count > 0:
+        db.commit()
+        results["deleted"] = deleted_count
+
+    logger.info(f"Sync complete. Scanned: {results['scanned']}, Added: {results['added']}, Updated: {results['updated']}, Deleted: {results.get('deleted', 0)}, Failed: {results['failed']}")
     return results

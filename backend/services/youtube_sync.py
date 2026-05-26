@@ -62,7 +62,9 @@ def sync_trending_youtube_song():
             target_entry = None
             if 'entries' in info_dict:
                 for entry in info_dict['entries']:
-                    if entry and entry.get('duration', 9999) < 600:
+                    duration = entry.get('duration', 9999)
+                    # Filter out short clips/teasers (< 1 min) and huge mixes (> 11 mins)
+                    if entry and duration >= 60 and duration <= 660:
                         target_entry = entry
                         break
             
@@ -90,12 +92,12 @@ def sync_trending_youtube_song():
             # This allows song_scanner.py to parse the filename and query iTunes for the thumbnail
             safe_title = re.sub(r'[^a-zA-Z0-9\s]', '', video_title).strip().replace(' ', '_')
             safe_artist = re.sub(r'[^a-zA-Z0-9\s]', '', video_uploader).strip().replace(' ', '_')
-            custom_public_id = f"{safe_title}-{safe_artist}"[:100]
+            custom_public_id = f"{safe_title}-{safe_artist}"[:100] + ".mp3"
 
             logger.info(f"Uploading to Cloudinary as {custom_public_id}...")
             upload_result = cloudinary.uploader.upload_large(
                 expected_filepath,
-                resource_type="video",
+                resource_type="raw",
                 folder="songs/",
                 public_id=custom_public_id,
                 overwrite=True

@@ -16,20 +16,10 @@ interface WaveformPlayerProps {
 export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
   const getFullUrl = (url: string | null) => {
     if (!url) return '';
-    let finalUrl = url;
     if (url.startsWith('http') || url.startsWith('data:')) {
-      finalUrl = url;
-    } else {
-      finalUrl = `http://localhost:8000${url}`;
+      return url;
     }
-    
-    // Cloudinary sometimes drops the extension for 'video' resource types.
-    // WebAudio strict decoding fails if the Content-Type is wrong. 
-    // Forcing .mp3 tells Cloudinary to serve it explicitly as audio/mpeg.
-    if (finalUrl.includes('res.cloudinary.com') && !finalUrl.match(/\.(mp3|wav|mp4|webm|raw)$/i)) {
-        finalUrl = `${finalUrl}.mp3`;
-    }
-    return finalUrl;
+    return `http://localhost:8000${url}`;
   };
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,11 +50,6 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
     const isMobile = window.innerWidth < 768;
 
-    // Create a native HTML5 Audio element. This is infinitely more resilient 
-    // to format headers and missing extensions than the strict WebAudio fetch().
-    const audioEl = new Audio(getFullUrl(song.audio_url));
-    audioEl.crossOrigin = 'anonymous';
-
     const ws = WaveSurfer.create({
       container: containerRef.current,
       waveColor: 'rgba(255, 255, 255, 0.2)',
@@ -77,7 +62,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       height: 140,
       minPxPerSec: isMobile ? 50 : 0, // Force scrolling on mobile
       plugins: [regions],
-      media: audioEl, // Force MediaElement backend
+      url: getFullUrl(song.audio_url),
     });
 
     wavesurferRef.current = ws;

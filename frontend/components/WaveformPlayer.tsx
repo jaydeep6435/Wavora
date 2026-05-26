@@ -16,10 +16,20 @@ interface WaveformPlayerProps {
 export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
   const getFullUrl = (url: string | null) => {
     if (!url) return '';
+    let finalUrl = url;
     if (url.startsWith('http') || url.startsWith('data:')) {
-      return url;
+      finalUrl = url;
+    } else {
+      finalUrl = `http://localhost:8000${url}`;
     }
-    return `http://localhost:8000${url}`;
+    
+    // Cloudinary sometimes drops the extension for 'video' resource types.
+    // WebAudio strict decoding fails if the Content-Type is wrong. 
+    // Forcing .mp3 tells Cloudinary to serve it explicitly as audio/mpeg.
+    if (finalUrl.includes('res.cloudinary.com') && !finalUrl.match(/\.(mp3|wav|mp4|webm|raw)$/i)) {
+        finalUrl = `${finalUrl}.mp3`;
+    }
+    return finalUrl;
   };
 
   const containerRef = useRef<HTMLDivElement>(null);

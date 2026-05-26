@@ -103,7 +103,7 @@ async def sync_songs(db: Session) -> dict:
         
         # Cloudinary Search API is delayed (takes 15 mins to index). 
         # Using Admin API without prefix is instant and bypasses virtual folder issues!
-        for r_type in ["video", "audio", "raw"]:
+        for r_type in ["video", "raw"]:
             try:
                 response = cloudinary.api.resources(
                     resource_type=r_type,
@@ -121,8 +121,9 @@ async def sync_songs(db: Session) -> dict:
                         audio_files_list.append((filename, secure_url, resource.get("duration")))
                         results["debug"].append(f"Found: {filename} ({r_type})")
             except Exception as e:
-                logger.warning(f"Admin API failed for {r_type}: {e}")
-                results["debug"].append(f"Admin API Error for {r_type}: {str(e)}")
+                error_msg = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+                logger.warning(f"Admin API failed for {r_type}: {error_msg}")
+                results["debug"].append(f"Admin API Error for {r_type}: {error_msg}")
 
     except Exception as e:
         logger.warning(f"Failed to fetch resources from Cloudinary: {e}. Skipping scan.")

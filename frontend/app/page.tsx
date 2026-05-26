@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, Music2, Disc, Play, RefreshCw } from 'lucide-react';
+import { Search, Music2, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MusicService, Song } from '../services/api';
 import WaveformPlayer from '../components/WaveformPlayer';
@@ -15,28 +15,20 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [hoveredSong, setHoveredSong] = useState<Song | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-      const result = await MusicService.syncLibrary();
-      if (result.success) {
-        let msg = `Synced! Added ${result.results.added} tracks.`;
-        if (result.results.deleted) msg += ` Removed ${result.results.deleted} missing tracks.`;
-        toast.success(msg);
-        await loadSongs();
-      }
-    } catch (error) {
-      toast.error('Failed to sync library.');
-      console.error(error);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   useEffect(() => {
+    // 1. Instantly load cached songs from the database for lightning-fast initial render
     loadSongs();
+    
+    // 2. Silently trigger a background sync with Cloudinary
+    MusicService.syncLibrary().then(result => {
+      // 3. If the background sync found any changes, silently refresh the UI
+      if (result.success && (result.results.added > 0 || result.results.deleted > 0 || result.results.updated > 0)) {
+        loadSongs();
+      }
+    }).catch(err => {
+      console.error('Silent background sync failed:', err);
+    });
   }, []);
 
   const loadSongs = async (query?: string) => {
@@ -136,14 +128,6 @@ export default function Home() {
               onChange={handleSearch}
             />
           </div>
-          
-          <button 
-            onClick={handleSync}
-            disabled={isSyncing}
-            className={`h-[65px] px-6 rounded-[58px] border-2 ${isSyncing ? 'border-[#14b861] text-[#14b861]' : 'border-white/20 text-white hover:border-white'} font-medium flex items-center justify-center transition-all bg-black`}
-          >
-            <RefreshCw className={`w-6 h-6 ${isSyncing ? 'animate-spin' : ''}`} />
-          </button>
         </motion.div>
       </header>
 

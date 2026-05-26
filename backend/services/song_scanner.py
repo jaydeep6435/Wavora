@@ -101,23 +101,28 @@ async def sync_songs(db: Session) -> dict:
         # Cloudinary treats API audio uploads as 'video', but manual web dashboard uploads might be 'raw'
         audio_files_list = []
         
-        # Use Cloudinary's powerful Search API to find ALL assets in the folder regardless of resource_type
-        try:
-            from cloudinary.search import Search
-            search_result = Search().expression("folder:songs").max_results(500).execute()
-            
-            resources = search_result.get("resources", [])
-            for resource in resources:
-                public_id = resource.get("public_id")
-                secure_url = resource.get("secure_url")
+        # Cloudinary Search API is delayed (takes 15 mins to index). 
+        # Using Admin API without prefix is instant and bypasses virtual folder issues!
+        for r_type in ["video", "audio", "raw"]:
+            try:
+                response = cloudinary.api.resources(
+                    resource_type=r_type,
+                    type="upload",
+                    max_results=500
+                )
                 
-                filename = public_id.split("/")[-1]
-                if filename:
-                    audio_files_list.append((filename, secure_url, resource.get("duration")))
-                    results["debug"].append(f"Found: {filename}")
-        except Exception as e:
-            logger.warning(f"Cloudinary Search API failed: {e}")
-            results["debug"].append(f"Search API Error: {str(e)}")
+                resources = response.get("resources", [])
+                for resource in resources:
+                    public_id = resource.get("public_id")
+                    secure_url = resource.get("secure_url")
+                    
+                    filename = public_id.split("/")[-1]
+                    if filename:
+                        audio_files_list.append((filename, secure_url, resource.get("duration")))
+                        results["debug"].append(f"Found: {filename} ({r_type})")
+            except Exception as e:
+                logger.warning(f"Admin API failed for {r_type}: {e}")
+                results["debug"].append(f"Admin API Error for {r_type}: {str(e)}")
 
     except Exception as e:
         logger.warning(f"Failed to fetch resources from Cloudinary: {e}. Skipping scan.")

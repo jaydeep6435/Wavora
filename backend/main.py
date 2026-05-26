@@ -26,16 +26,23 @@ async def lifespan(app: FastAPI):
     from db.base import Base
     Base.metadata.create_all(bind=engine)
 
-    # 2. Run Directory Scanner to Sync Local Songs
+    # 2. Run Directory Scanner to Sync Local Songs in the BACKGROUND
+    import asyncio
     from db.session import SessionLocal
     from services.song_scanner import sync_songs
-    db = SessionLocal()
-    try:
-        await sync_songs(db)
-    except Exception as e:
-        logger.error(f"Startup song scanning sync failed: {e}")
-    finally:
-        db.close()
+    
+    async def run_sync_background():
+        db = SessionLocal()
+        try:
+            await sync_songs(db)
+        except Exception as e:
+            logger.error(f"Startup song scanning sync failed: {e}")
+        finally:
+            db.close()
+            
+    # Do not block startup!
+    asyncio.create_task(run_sync_background())
+    
     # 3. Start APScheduler for YouTube Sync
     scheduler.add_job(sync_trending_youtube_song, 'cron', hour=0, minute=0)
     scheduler.start()

@@ -227,6 +227,12 @@ def process_queue_item():
                     db.add(new_song)
                     db.commit()
                     logger.info(f"Successfully saved {title} to DB under Album ID {album_id}")
+                else:
+                    # If song already exists (e.g. found by scanner), link it to this album!
+                    if existing_song.album_id != album_id:
+                        existing_song.album_id = album_id
+                        db.commit()
+                        logger.info(f"Linked existing song {title} to Album ID {album_id}")
             except Exception as db_e:
                 logger.error(f"Database save failed: {db_e}")
             finally:

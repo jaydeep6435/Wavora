@@ -5,3 +5,4 @@ from db.session import Base  # noqa
 # Future database models will be imported here:
 from models.song import Song  # noqa
 from models.album import Album  # noqa
+from models.sync_state import DownloadQueue, DownloadedAlbumTracker, DownloadedSongTracker  # noqa

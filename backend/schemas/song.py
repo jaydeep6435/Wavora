@@ -8,9 +8,23 @@ class SongBase(BaseModel):
     audio_path: str = Field(..., description="Supabase public URL to the audio file")
     thumbnail_path: Optional[str] = Field(None, description="Remote URL path for the thumbnail image")
     duration: float = Field(..., ge=0, description="Duration of the song in seconds")
+    album_id: Optional[int] = Field(None, description="Foreign Key to the Album")
 
 class SongCreate(SongBase):
     pass
+
+class AlbumBase(BaseModel):
+    title: str
+    artist: str
+    thumbnail_path: Optional[str] = None
+
+class AlbumResponse(AlbumBase):
+    id: int
+    songs: Optional[list] = [] # To be populated with SongResponse objects
+    
+    model_config = {
+        "from_attributes": True
+    }
 
 class SongResponse(SongBase):
     id: int

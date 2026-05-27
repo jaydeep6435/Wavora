@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Music2, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MusicService, Song } from '../services/api';
+import { MusicService, Song, Album } from '../services/api';
 import WaveformPlayer from '../components/WaveformPlayer';
 import { SongCardSkeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -37,7 +38,10 @@ export default function Home() {
       if (query) {
         setSongs(await MusicService.searchSongs(query));
       } else {
-        setSongs(await MusicService.getSongs());
+        const fetchedSongs = await MusicService.getSongs();
+        const fetchedAlbums = await MusicService.getAlbums();
+        setSongs(fetchedSongs);
+        setAlbums(fetchedAlbums);
       }
     } catch (error) {
       console.error('Failed to load songs:', error);
@@ -132,56 +136,150 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
+      <div className="space-y-12">
         {isLoading ? (
-          Array.from({ length: 10 }).map((_, i) => <SongCardSkeleton key={i} />)
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
+            {Array.from({ length: 10 }).map((_, i) => <SongCardSkeleton key={i} />)}
+          </div>
         ) : songs.length > 0 ? (
-          songs.map((song, index) => (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              key={song.id}
-              onClick={() => setSelectedSong(song)}
-              onMouseEnter={() => setHoveredSong(song)}
-              onMouseLeave={() => setHoveredSong(null)}
-              className="dialed-card group cursor-pointer rounded-[24px] overflow-hidden flex flex-col"
-            >
-              <div className="relative aspect-square w-full p-3 pb-0">
-                <div className="w-full h-full relative rounded-[16px] overflow-hidden bg-zinc-900 border border-white/10">
-                  {song.thumbnail_url ? (
-                    <img 
-                      src={song.thumbnail_url.startsWith('http') ? song.thumbnail_url : `http://localhost:8000${song.thumbnail_url}`} 
-                      alt={song.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#111]">
-                      <Music2 className="w-12 h-12 text-zinc-700" />
-                    </div>
-                  )}
-                  {/* Hover Play Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
-                    <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform duration-150 group-active:scale-95">
-                      <Play className="w-8 h-8 text-black ml-1" fill="currentColor" />
+          <>
+            {/* First Row of Songs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
+              {songs.slice(0, 5).map((song, index) => (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  key={song.id}
+                  onClick={() => setSelectedSong(song)}
+                  onMouseEnter={() => setHoveredSong(song)}
+                  onMouseLeave={() => setHoveredSong(null)}
+                  className="dialed-card group cursor-pointer rounded-[24px] overflow-hidden flex flex-col"
+                >
+                  <div className="relative aspect-square w-full p-3 pb-0">
+                    <div className="w-full h-full relative rounded-[16px] overflow-hidden bg-zinc-900 border border-white/10">
+                      {song.thumbnail_url ? (
+                        <img 
+                          src={song.thumbnail_url.startsWith('http') ? song.thumbnail_url : `http://localhost:8000${song.thumbnail_url}`} 
+                          alt={song.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-[#111]">
+                          <Music2 className="w-12 h-12 text-zinc-700" />
+                        </div>
+                      )}
+                      {/* Hover Play Overlay */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform duration-150 group-active:scale-95">
+                          <Play className="w-8 h-8 text-black ml-1" fill="currentColor" />
+                        </div>
+                      </div>
                     </div>
                   </div>
+                  
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-bold text-lg text-white truncate mb-1">{song.title}</h3>
+                      <p className="text-sm text-zinc-400 truncate font-medium">{song.artist}</p>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="text-xs py-1 px-3 rounded-full bg-white/10 text-white font-medium tracking-tight">
+                        {formatDuration(song.duration)}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Horizontal Albums Section */}
+            {!searchQuery && albums.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="py-10 border-y border-white/5 bg-white/[0.02] -mx-6 md:-mx-12 lg:-mx-16 px-6 md:px-12 lg:px-16"
+              >
+                <h2 className="text-2xl font-bold text-white mb-6">Trending Albums</h2>
+                <div className="flex overflow-x-auto gap-6 pb-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  {albums.map((album) => (
+                    <motion.div 
+                      key={album.id}
+                      className="min-w-[200px] flex-shrink-0 group cursor-pointer"
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      <div className="w-[200px] h-[200px] rounded-[16px] overflow-hidden mb-4 bg-zinc-900 border border-white/10 shadow-2xl">
+                        {album.thumbnail_path ? (
+                          <img 
+                            src={album.thumbnail_path.startsWith('http') ? album.thumbnail_path : `http://localhost:8000${album.thumbnail_path}`} 
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                          />
+                        ) : (
+                           <div className="w-full h-full flex items-center justify-center bg-[#111]">
+                             <Music2 className="w-12 h-12 text-zinc-700" />
+                           </div>
+                        )}
+                      </div>
+                      <h3 className="font-bold text-white truncate text-lg group-hover:text-zinc-300 transition-colors">{album.title}</h3>
+                      <p className="text-zinc-400 text-sm truncate font-medium">{album.artist}</p>
+                    </motion.div>
+                  ))}
                 </div>
+              </motion.div>
+            )}
+
+            {/* Rest of the Songs */}
+            {songs.length > 5 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
+                {songs.slice(5).map((song, index) => (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    key={song.id}
+                    onClick={() => setSelectedSong(song)}
+                    onMouseEnter={() => setHoveredSong(song)}
+                    onMouseLeave={() => setHoveredSong(null)}
+                    className="dialed-card group cursor-pointer rounded-[24px] overflow-hidden flex flex-col"
+                  >
+                    <div className="relative aspect-square w-full p-3 pb-0">
+                      <div className="w-full h-full relative rounded-[16px] overflow-hidden bg-zinc-900 border border-white/10">
+                        {song.thumbnail_url ? (
+                          <img 
+                            src={song.thumbnail_url.startsWith('http') ? song.thumbnail_url : `http://localhost:8000${song.thumbnail_url}`} 
+                            alt={song.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-[#111]">
+                            <Music2 className="w-12 h-12 text-zinc-700" />
+                          </div>
+                        )}
+                        {/* Hover Play Overlay */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
+                          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform duration-150 group-active:scale-95">
+                            <Play className="w-8 h-8 text-black ml-1" fill="currentColor" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h3 className="font-bold text-lg text-white truncate mb-1">{song.title}</h3>
+                        <p className="text-sm text-zinc-400 truncate font-medium">{song.artist}</p>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between">
+                        <span className="text-xs py-1 px-3 rounded-full bg-white/10 text-white font-medium tracking-tight">
+                          {formatDuration(song.duration)}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
-              
-              <div className="p-5 flex-1 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-bold text-lg text-white truncate mb-1">{song.title}</h3>
-                  <p className="text-sm text-zinc-400 truncate font-medium">{song.artist}</p>
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xs py-1 px-3 rounded-full bg-white/10 text-white font-medium tracking-tight">
-                    {formatDuration(song.duration)}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          ))
+            )}
+          </>
         ) : (
           <div className="col-span-full">
             <EmptyState 

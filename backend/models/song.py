@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy.orm import relationship
 from db.session import Base
 
 class Song(Base):
@@ -14,3 +15,7 @@ class Song(Base):
     audio_path = Column(String, unique=True, nullable=False, index=True)
     thumbnail_path = Column(String, nullable=True)
     duration = Column(Float, nullable=False)
+
+    # Link to Album
+    album_id = Column(Integer, ForeignKey("albums.id"), nullable=True)
+    album = relationship("Album", back_populates="songs")

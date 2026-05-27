@@ -17,6 +17,15 @@ export interface Song {
   audio_url: string;
   thumbnail_url: string | null;
   duration: number;
+  album_id?: number | null;
+}
+
+export interface Album {
+  id: number;
+  title: string;
+  artist: string;
+  thumbnail_path: string | null;
+  songs: Song[];
 }
 
 export interface ClipRequest {
@@ -31,6 +40,12 @@ export interface ClipResponse {
 }
 
 export const MusicService = {
+  // Fetch all available albums with their nested songs
+  async getAlbums(): Promise<Album[]> {
+    const response = await api.get<Album[]>('/albums');
+    return response.data;
+  },
+
   // Fetch all available songs
   async getSongs(): Promise<Song[]> {
     const response = await api.get<Song[]>('/songs');

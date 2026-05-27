@@ -97,6 +97,32 @@ def map_song_to_response(song: Song) -> SongResponse:
         thumbnail_url=song.thumbnail_path
     )
 
+from models.album import Album
+from schemas.song import AlbumResponse
+
+@api_router.get("/albums", response_model=List[AlbumResponse], summary="Get all albums")
+async def get_albums(
+    skip: int = Query(0, ge=0, description="Number of items to skip for pagination"),
+    limit: int = Query(100, ge=1, le=100, description="Max number of items to return"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve all albums and their associated songs.
+    """
+    albums = db.query(Album).offset(skip).limit(limit).all()
+    # Map each album to AlbumResponse, injecting its songs via map_song_to_response
+    response_list = []
+    for album in albums:
+        album_dict = {
+            "id": album.id,
+            "title": album.title,
+            "artist": album.artist,
+            "thumbnail_path": album.thumbnail_path,
+            "songs": [map_song_to_response(song) for song in album.songs]
+        }
+        response_list.append(album_dict)
+    return response_list
+
 @api_router.get("/songs", response_model=List[SongResponse], summary="Get all songs")
 async def get_songs(
     skip: int = Query(0, ge=0, description="Number of items to skip for pagination"),

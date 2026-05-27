@@ -24,6 +24,18 @@ async def lifespan(app: FastAPI):
     # 1. Initialize PostgreSQL Database Schema
     from db.session import engine
     from db.base import Base
+    from sqlalchemy import text
+
+    # Handle migration for album_id gracefully
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE songs ADD COLUMN album_id INTEGER REFERENCES albums(id)"))
+            conn.commit()
+            logger.info("Successfully added album_id column to songs table.")
+    except Exception as e:
+        if "duplicate column name" not in str(e).lower():
+            logger.warning(f"Note on migration: {e}")
+
     Base.metadata.create_all(bind=engine)
 
     # 2. Run Directory Scanner to Sync Local Songs in the BACKGROUND
@@ -43,8 +55,12 @@ async def lifespan(app: FastAPI):
     # Do not block startup!
     asyncio.create_task(run_sync_background())
     
+    from services.youtube_sync import populate_album_queue, process_queue_item
     # 3. Start APScheduler for YouTube Sync
-    scheduler.add_job(sync_trending_youtube_song, 'cron', hour=0, minute=0)
+    # Populate Album queue at midnight
+    scheduler.add_job(populate_album_queue, 'cron', hour=0, minute=0)
+    # Process one song from the queue every 7 minutes
+    scheduler.add_job(process_queue_item, 'cron', minute='*/7')
     scheduler.start()
 
     yield

@@ -15,6 +15,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [hoveredSong, setHoveredSong] = useState<Song | null>(null);
 
   useEffect(() => {
@@ -67,6 +68,53 @@ export default function Home() {
   };
 
   const bgSong = selectedSong || hoveredSong;
+
+  const renderSongCard = (song: Song, index: number) => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      key={song.id}
+      onClick={() => setSelectedSong(song)}
+      onMouseEnter={() => setHoveredSong(song)}
+      onMouseLeave={() => setHoveredSong(null)}
+      className="dialed-card group cursor-pointer rounded-[24px] overflow-hidden flex flex-col"
+    >
+      <div className="relative aspect-square w-full p-3 pb-0">
+        <div className="w-full h-full relative rounded-[16px] overflow-hidden bg-zinc-900 border border-white/10">
+          {song.thumbnail_url ? (
+            <img 
+              src={song.thumbnail_url.startsWith('http') ? song.thumbnail_url : `http://localhost:8000${song.thumbnail_url}`} 
+              alt={song.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-[#111]">
+              <Music2 className="w-12 h-12 text-zinc-700" />
+            </div>
+          )}
+          {/* Hover Play Overlay */}
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform duration-150 group-active:scale-95">
+              <Play className="w-8 h-8 text-black ml-1" fill="currentColor" />
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="p-5 flex-1 flex flex-col justify-between">
+        <div>
+          <h3 className="font-bold text-lg text-white truncate mb-1">{song.title}</h3>
+          <p className="text-sm text-zinc-400 truncate font-medium">{song.artist}</p>
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          <span className="text-xs py-1 px-3 rounded-full bg-white/10 text-white font-medium tracking-tight">
+            {formatDuration(song.duration)}
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
 
   return (
     <>
@@ -145,52 +193,7 @@ export default function Home() {
           <>
             {/* First Row of Songs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
-              {songs.slice(0, 5).map((song, index) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  key={song.id}
-                  onClick={() => setSelectedSong(song)}
-                  onMouseEnter={() => setHoveredSong(song)}
-                  onMouseLeave={() => setHoveredSong(null)}
-                  className="dialed-card group cursor-pointer rounded-[24px] overflow-hidden flex flex-col"
-                >
-                  <div className="relative aspect-square w-full p-3 pb-0">
-                    <div className="w-full h-full relative rounded-[16px] overflow-hidden bg-zinc-900 border border-white/10">
-                      {song.thumbnail_url ? (
-                        <img 
-                          src={song.thumbnail_url.startsWith('http') ? song.thumbnail_url : `http://localhost:8000${song.thumbnail_url}`} 
-                          alt={song.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-[#111]">
-                          <Music2 className="w-12 h-12 text-zinc-700" />
-                        </div>
-                      )}
-                      {/* Hover Play Overlay */}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
-                        <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform duration-150 group-active:scale-95">
-                          <Play className="w-8 h-8 text-black ml-1" fill="currentColor" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="p-5 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg text-white truncate mb-1">{song.title}</h3>
-                      <p className="text-sm text-zinc-400 truncate font-medium">{song.artist}</p>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between">
-                      <span className="text-xs py-1 px-3 rounded-full bg-white/10 text-white font-medium tracking-tight">
-                        {formatDuration(song.duration)}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+              {songs.slice(0, 5).map((song, index) => renderSongCard(song, index))}
             </div>
 
             {/* Horizontal Albums Section */}
@@ -205,6 +208,7 @@ export default function Home() {
                   {albums.map((album) => (
                     <motion.div 
                       key={album.id}
+                      onClick={() => setSelectedAlbum(album)}
                       className="min-w-[200px] flex-shrink-0 group cursor-pointer"
                       whileHover={{ scale: 1.02 }}
                     >
@@ -231,52 +235,7 @@ export default function Home() {
             {/* Rest of the Songs */}
             {songs.length > 5 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
-                {songs.slice(5).map((song, index) => (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    key={song.id}
-                    onClick={() => setSelectedSong(song)}
-                    onMouseEnter={() => setHoveredSong(song)}
-                    onMouseLeave={() => setHoveredSong(null)}
-                    className="dialed-card group cursor-pointer rounded-[24px] overflow-hidden flex flex-col"
-                  >
-                    <div className="relative aspect-square w-full p-3 pb-0">
-                      <div className="w-full h-full relative rounded-[16px] overflow-hidden bg-zinc-900 border border-white/10">
-                        {song.thumbnail_url ? (
-                          <img 
-                            src={song.thumbnail_url.startsWith('http') ? song.thumbnail_url : `http://localhost:8000${song.thumbnail_url}`} 
-                            alt={song.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-[#111]">
-                            <Music2 className="w-12 h-12 text-zinc-700" />
-                          </div>
-                        )}
-                        {/* Hover Play Overlay */}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
-                          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform duration-150 group-active:scale-95">
-                            <Play className="w-8 h-8 text-black ml-1" fill="currentColor" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="p-5 flex-1 flex flex-col justify-between">
-                      <div>
-                        <h3 className="font-bold text-lg text-white truncate mb-1">{song.title}</h3>
-                        <p className="text-sm text-zinc-400 truncate font-medium">{song.artist}</p>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between">
-                        <span className="text-xs py-1 px-3 rounded-full bg-white/10 text-white font-medium tracking-tight">
-                          {formatDuration(song.duration)}
-                        </span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+                {songs.slice(5).map((song, index) => renderSongCard(song, index))}
               </div>
             )}
           </>
@@ -290,6 +249,57 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Overlay Album View */}
+      <AnimatePresence>
+        {selectedAlbum && (
+          <div className="fixed inset-0 z-40 flex flex-col bg-black/95 overflow-y-auto backdrop-blur-xl">
+            <motion.div 
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="min-h-screen w-full max-w-[1400px] mx-auto p-6 md:p-12 lg:p-16"
+            >
+              <button 
+                onClick={() => setSelectedAlbum(null)}
+                className="mb-8 text-zinc-400 hover:text-white flex items-center gap-2 transition-colors font-medium"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                Back to Library
+              </button>
+              
+              <div className="flex flex-col md:flex-row gap-8 mb-16 items-end border-b border-white/10 pb-12">
+                <div className="w-48 h-48 md:w-64 md:h-64 flex-shrink-0 rounded-2xl overflow-hidden shadow-2xl bg-zinc-900">
+                  {selectedAlbum.thumbnail_path ? (
+                    <img src={selectedAlbum.thumbnail_path.startsWith('http') ? selectedAlbum.thumbnail_path : `http://localhost:8000${selectedAlbum.thumbnail_path}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#111]">
+                      <Music2 className="w-16 h-16 text-zinc-700" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-zinc-400 uppercase tracking-widest font-bold text-sm mb-2">Album</p>
+                  <h1 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tighter">{selectedAlbum.title}</h1>
+                  <p className="text-2xl text-zinc-300 font-medium">{selectedAlbum.artist}</p>
+                </div>
+              </div>
+              
+              {selectedAlbum.songs && selectedAlbum.songs.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
+                  {selectedAlbum.songs.map((song, index) => renderSongCard(song, index))}
+                </div>
+              ) : (
+                <EmptyState 
+                  icon={Music2} 
+                  title="Album is empty" 
+                  description="Songs for this album are still downloading. Check back in a few minutes!" 
+                />
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Overlay Waveform Studio */}
       <AnimatePresence>

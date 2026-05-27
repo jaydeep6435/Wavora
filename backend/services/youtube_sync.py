@@ -68,7 +68,7 @@ def sync_trending_youtube_song():
             ]
             selected_region = random.choice(indian_regions)
             
-            search_query = f"scsearch15:latest trending instagram reels songs {selected_region} official music video hit"
+            search_query = f"ytsearch15:latest trending instagram reels songs {selected_region} official music video hit"
             logger.info(f"Searching YouTube with query: {search_query}")
             
             # First, fetch search results WITHOUT downloading

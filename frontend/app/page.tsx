@@ -209,10 +209,10 @@ export default function Home() {
                     <motion.div 
                       key={album.id}
                       onClick={() => setSelectedAlbum(album)}
-                      className="min-w-[200px] flex-shrink-0 group cursor-pointer"
+                      className="w-[200px] flex-shrink-0 group cursor-pointer"
                       whileHover={{ scale: 1.02 }}
                     >
-                      <div className="w-[200px] h-[200px] rounded-[16px] overflow-hidden mb-4 bg-zinc-900 border border-white/10 shadow-2xl">
+                      <div className="w-full aspect-square rounded-[16px] overflow-hidden mb-4 bg-zinc-900 border border-white/10 shadow-2xl">
                         {album.thumbnail_path ? (
                           <img 
                             src={album.thumbnail_path.startsWith('http') ? album.thumbnail_path : `http://localhost:8000${album.thumbnail_path}`} 
@@ -224,8 +224,8 @@ export default function Home() {
                            </div>
                         )}
                       </div>
-                      <h3 className="font-bold text-white truncate text-lg group-hover:text-zinc-300 transition-colors">{album.title}</h3>
-                      <p className="text-zinc-400 text-sm truncate font-medium">{album.artist}</p>
+                      <h3 className="w-full font-bold text-white truncate text-lg group-hover:text-zinc-300 transition-colors">{album.title}</h3>
+                      <p className="w-full text-zinc-400 text-sm truncate font-medium">{album.artist}</p>
                     </motion.div>
                   ))}
                 </div>

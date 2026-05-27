@@ -5,7 +5,7 @@ import yt_dlp
 import cloudinary
 import cloudinary.uploader
 import random
-import requests
+import httpx
 import re
 from core.config import settings
 from services.queue_manager import push_queue, pop_queue, is_album_downloaded, mark_album_downloaded
@@ -46,7 +46,7 @@ def populate_album_queue():
     itunes_url = f"https://itunes.apple.com/search?term={selected_region}&media=music&entity=album&limit=30"
     logger.info(f"Querying iTunes for verified Album: {itunes_url}")
     
-    response = requests.get(itunes_url)
+    response = httpx.get(itunes_url)
     data = response.json()
     results = data.get("results", [])
     
@@ -75,7 +75,7 @@ def populate_album_queue():
     
     # Fetch songs in this album
     lookup_url = f"https://itunes.apple.com/lookup?id={collection_id}&entity=song"
-    lookup_res = requests.get(lookup_url)
+    lookup_res = httpx.get(lookup_url)
     lookup_data = lookup_res.json()
     
     songs = [item for item in lookup_data.get("results", []) if item.get("wrapperType") == "track"]

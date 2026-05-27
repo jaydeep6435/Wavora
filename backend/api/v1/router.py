@@ -94,7 +94,8 @@ def map_song_to_response(song: Song) -> SongResponse:
         thumbnail_path=song.thumbnail_path,
         duration=song.duration,
         audio_url=song.audio_path,
-        thumbnail_url=song.thumbnail_path
+        thumbnail_url=song.thumbnail_path,
+        album_id=song.album_id
     )
 
 from models.album import Album

@@ -40,6 +40,11 @@ def sync_trending_youtube_song():
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web']
+            }
+        },
         'outtmpl': os.path.join(tmp_dir, 'yt_sync_%(id)s.%(ext)s'),
         'noplaylist': False,
         'quiet': False

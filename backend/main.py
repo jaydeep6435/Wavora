@@ -21,12 +21,15 @@ scheduler = AsyncIOScheduler()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup actions
-    # 1. Initialize PostgreSQL Database Schema
+    # 1. Initialize Database Schema
     from db.session import engine
     from db.base import Base
     from sqlalchemy import text
 
-    # Handle migration for album_id gracefully
+    # Create all tables first (like 'albums')
+    Base.metadata.create_all(bind=engine)
+
+    # Handle migration for album_id gracefully after tables exist
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE songs ADD COLUMN album_id INTEGER REFERENCES albums(id)"))
@@ -35,8 +38,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         if "duplicate column name" not in str(e).lower():
             logger.warning(f"Note on migration: {e}")
-
-    Base.metadata.create_all(bind=engine)
 
     # 2. Run Directory Scanner to Sync Local Songs in the BACKGROUND
     import asyncio

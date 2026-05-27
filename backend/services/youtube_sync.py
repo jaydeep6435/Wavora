@@ -73,8 +73,10 @@ def sync_trending_youtube_song():
             ]
             selected_region = random.choice(indian_regions)
             
-            search_query = f"ytsearch15:latest trending instagram reels songs {selected_region} official music video hit"
-            logger.info(f"Searching YouTube with query: {search_query}")
+            # YouTube strictly bans datacenter IPs. We switch to SoundCloud (scsearch15) 
+            # which is completely immune to bot detection and hosts all the viral Instagram audio!
+            search_query = f"scsearch15:trending {selected_region} hit song"
+            logger.info(f"Searching SoundCloud with query: {search_query}")
             
             # First, fetch search results WITHOUT downloading
             info_dict = ydl.extract_info(search_query, download=False)

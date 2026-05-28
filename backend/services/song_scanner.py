@@ -116,9 +116,11 @@ async def sync_songs(db: Session) -> dict:
                     public_id = resource.get("public_id")
                     secure_url = resource.get("secure_url")
                     
-                    filename = public_id.split("/")[-1]
+                    # public_id doesn't always have extensions if uploaded manually to Cloudinary.
+                    # secure_url ALWAYS has the correct filename with extension.
+                    filename = secure_url.split("/")[-1]
                     if filename:
-                        audio_files_list.append((filename, secure_url, resource.get("duration")))
+                        audio_files_list.append((unquote(filename), secure_url, resource.get("duration")))
                         results["debug"].append(f"Found: {filename} ({r_type})")
             except Exception as e:
                 error_msg = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)

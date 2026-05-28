@@ -57,6 +57,30 @@ async def debug_cloudinary():
             
     return debug_data
 
+@api_router.get("/debug-db", summary="Debug database and sync")
+async def debug_db(db: Session = Depends(get_db)):
+    """
+    Run the sync manually and return exactly what happened, plus current DB state.
+    """
+    try:
+        from models.song import Song
+        before_songs = db.query(Song).all()
+        before_state = [{"id": s.id, "title": s.title, "audio_path": s.audio_path.split("/")[-1]} for s in before_songs]
+        
+        sync_results = await sync_songs(db)
+        
+        after_songs = db.query(Song).all()
+        after_state = [{"id": s.id, "title": s.title, "audio_path": s.audio_path.split("/")[-1]} for s in after_songs]
+        
+        return {
+            "success": True,
+            "sync_results": sync_results,
+            "database_before": before_state,
+            "database_after": after_state
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "traceback": __import__("traceback").format_exc()}
+
 @api_router.post("/youtube-sync/force", summary="Force sync trending song from YouTube")
 async def force_youtube_sync(db: Session = Depends(get_db)):
     """

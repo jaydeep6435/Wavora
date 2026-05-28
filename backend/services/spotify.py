@@ -40,7 +40,7 @@ class SpotifyService:
         }
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.get("https://itunes.apple.com/search", params=params)
                 response.raise_for_status()
                 data = response.json()

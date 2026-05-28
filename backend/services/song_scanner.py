@@ -43,7 +43,7 @@ def get_audio_duration(file_url: str) -> float:
             stderr=subprocess.PIPE,
             text=True,
             check=True,
-            timeout=15.0 # Increased timeout for network request
+            timeout=3.0 # Fails fast, use 180s fallback if it hangs
         )
         duration_str = result.stdout.strip()
         if not duration_str:

@@ -168,7 +168,7 @@ async def sync_songs(db: Session) -> dict:
                     artist = official_artist
 
             # 2. Check if song already exists by filename instead of exact URL to avoid version mismatches
-            from urllib.parse import unquote
+            # Get existing songs from DB to avoid duplicates
             db_songs = db.query(Song).all()
             existing_song = next((s for s in db_songs if unquote(s.audio_path.split("/")[-1]) == audio_file), None)
             

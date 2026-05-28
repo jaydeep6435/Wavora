@@ -165,8 +165,9 @@ async def sync_songs(db: Session) -> dict:
                     artist = official_artist
 
             # 2. Check if song already exists by filename instead of exact URL to avoid version mismatches
+            from urllib.parse import unquote
             db_songs = db.query(Song).all()
-            existing_song = next((s for s in db_songs if s.audio_path.split("/")[-1] == audio_file), None)
+            existing_song = next((s for s in db_songs if unquote(s.audio_path.split("/")[-1]) == audio_file), None)
             
             if existing_song:
                 # Update existing song if metadata changed
@@ -212,12 +213,13 @@ async def sync_songs(db: Session) -> dict:
 
     # 5. Clean up missing songs from the database
     # If a song is in the DB as a Cloudinary URL, but was not in the Cloudinary scan, delete it
+    from urllib.parse import unquote
     scanned_filenames = [filename for filename, _, _ in audio_files_list]
     db_songs = db.query(Song).all()
     deleted_count = 0
     for db_song in db_songs:
         if 'res.cloudinary.com' in db_song.audio_path:
-            db_filename = db_song.audio_path.split("/")[-1]
+            db_filename = unquote(db_song.audio_path.split("/")[-1])
             if db_filename not in scanned_filenames:
                 db.delete(db_song)
                 deleted_count += 1

@@ -60,8 +60,8 @@ async def lifespan(app: FastAPI):
     # 3. Start APScheduler for YouTube Sync
     # Populate Album queue at midnight
     scheduler.add_job(populate_album_queue, 'cron', hour=0, minute=0)
-    # Process one song from the queue every 7 minutes
-    scheduler.add_job(process_queue_item, 'cron', minute='*/7')
+    # Process one song from the queue every 2 minutes (safe rate to avoid IP bans)
+    scheduler.add_job(process_queue_item, 'cron', minute='*/2')
     scheduler.start()
 
     yield

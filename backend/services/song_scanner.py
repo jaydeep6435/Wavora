@@ -2,6 +2,7 @@ import os
 import subprocess
 import shutil
 import logging
+from urllib.parse import unquote
 from sqlalchemy.orm import Session
 from core.config import settings
 from models.song import Song
@@ -215,7 +216,6 @@ async def sync_songs(db: Session) -> dict:
 
     # 5. Clean up missing songs from the database
     # If a song is in the DB as a Cloudinary URL, but was not in the Cloudinary scan, delete it
-    from urllib.parse import unquote
     scanned_filenames = [filename for filename, _, _ in audio_files_list]
     db_songs = db.query(Song).all()
     deleted_count = 0

@@ -164,12 +164,16 @@ async def sync_songs(db: Session) -> dict:
                 if official_artist:
                     artist = official_artist
 
-            # 4. Check if song already exists in the database
-            existing_song = db.query(Song).filter(Song.audio_path == full_audio_url).first()
-
+            # 2. Check if song already exists by filename instead of exact URL to avoid version mismatches
+            db_songs = db.query(Song).all()
+            existing_song = next((s for s in db_songs if s.audio_path.split("/")[-1] == audio_file), None)
+            
             if existing_song:
                 # Update existing song if metadata changed
                 changed = False
+                if existing_song.audio_path != full_audio_url:
+                    existing_song.audio_path = full_audio_url
+                    changed = True
                 if existing_song.title != title:
                     existing_song.title = title
                     changed = True
@@ -208,14 +212,16 @@ async def sync_songs(db: Session) -> dict:
 
     # 5. Clean up missing songs from the database
     # If a song is in the DB as a Cloudinary URL, but was not in the Cloudinary scan, delete it
-    scanned_urls = [url for _, url, _ in audio_files_list]
+    scanned_filenames = [filename for filename, _, _ in audio_files_list]
     db_songs = db.query(Song).all()
     deleted_count = 0
     for db_song in db_songs:
-        if 'res.cloudinary.com' in db_song.audio_path and db_song.audio_path not in scanned_urls:
-            db.delete(db_song)
-            deleted_count += 1
-            logger.info(f"Deleted missing song from database: {db_song.title}")
+        if 'res.cloudinary.com' in db_song.audio_path:
+            db_filename = db_song.audio_path.split("/")[-1]
+            if db_filename not in scanned_filenames:
+                db.delete(db_song)
+                deleted_count += 1
+                logger.info(f"Deleted missing song from database: {db_song.title}")
     
     if deleted_count > 0:
         db.commit()

@@ -43,8 +43,8 @@ def populate_album_queue():
     ]
     selected_region = random.choice(indian_regions)
     
-    # Search iTunes for an ALBUM
-    itunes_url = f"https://itunes.apple.com/search?term={selected_region}&media=music&entity=album&limit=30"
+    # Search iTunes for an ALBUM in the Indian store (&country=in)
+    itunes_url = f"https://itunes.apple.com/search?term={selected_region}&media=music&entity=album&limit=30&country=in"
     logger.info(f"Querying iTunes for verified Album: {itunes_url}")
     
     response = httpx.get(itunes_url)

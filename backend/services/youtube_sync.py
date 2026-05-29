@@ -34,12 +34,12 @@ def populate_album_queue():
     # Using search terms that target high-quality, official Bollywood movie soundtracks
     # like the ones shown in the user's iTunes screenshot (e.g. Kabir Singh, ANIMAL)
     indian_regions = [
+        "indian original motion picture soundtrack",
         "bollywood original motion picture soundtrack",
         "hindi original motion picture soundtrack",
-        "tamil original motion picture soundtrack",
-        "telugu original motion picture soundtrack",
-        "punjabi hit movie soundtrack",
-        "indian original motion picture soundtrack"
+        "marathi original motion picture soundtrack",
+        "punjabi original motion picture soundtrack",
+        "rajasthani original motion picture soundtrack"
     ]
     selected_region = random.choice(indian_regions)
     

@@ -97,6 +97,28 @@ async def debug_queue():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@api_router.post("/debug-reset", summary="Clear queue and remove Frozen album")
+async def debug_reset(db: Session = Depends(get_db)):
+    """
+    Clears the entire download queue and deletes the Frozen 2 album.
+    """
+    from models.sync_state import DownloadQueue
+    from models.album import Album
+    try:
+        # Clear Queue
+        db.query(DownloadQueue).delete()
+        
+        # Delete Frozen 2 Album
+        albums_to_delete = db.query(Album).filter(Album.title.ilike("%Frozen%")).all()
+        for album in albums_to_delete:
+            db.delete(album)
+            
+        db.commit()
+        return {"success": True, "message": f"Cleared queue and deleted {len(albums_to_delete)} 'Frozen' albums."}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "error": str(e)}
+
 @api_router.post("/youtube-sync/force", summary="Force sync trending song from YouTube")
 async def force_youtube_sync(db: Session = Depends(get_db)):
     """

@@ -31,14 +31,15 @@ def populate_album_queue():
     """
     logger.info("Starting Daily Album Selection task...")
     
+    # Using search terms that target high-quality, official Bollywood movie soundtracks
+    # like the ones shown in the user's iTunes screenshot (e.g. Kabir Singh, ANIMAL)
     indian_regions = [
-        "hindi punjabi hit",
-        "south indian telugu tamil hit",
-        "marathi trending hit",
-        "gujarati garba hit",
-        "bollywood romantic trending",
-        "indian driving hit",
-        "bhojpuri trending"
+        "bollywood original motion picture soundtrack",
+        "hindi original motion picture soundtrack",
+        "tamil original motion picture soundtrack",
+        "telugu original motion picture soundtrack",
+        "punjabi hit movie soundtrack",
+        "indian original motion picture soundtrack"
     ]
     selected_region = random.choice(indian_regions)
     
@@ -54,11 +55,13 @@ def populate_album_queue():
         logger.error(f"Could not find any albums on iTunes for {selected_region}.")
         return
 
-    # Find an album we haven't downloaded yet
+    # Find an album we haven't downloaded yet (and make sure it's a real playlist/album, not a Single)
     target_album = None
     for album in results:
         collection_id = str(album.get("collectionId"))
-        if not is_album_downloaded(collection_id):
+        track_count = album.get("trackCount", 0)
+        # Only select albums that have more than 3 tracks (no singles)
+        if track_count > 3 and not is_album_downloaded(collection_id):
             target_album = album
             break
             
@@ -171,7 +174,8 @@ def process_queue_item():
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            search_query = f"scsearch5:{title} {artist}"
+            # Using YouTube search (ytsearch1) with 'original audio' to avoid DJ/remix/beat versions
+            search_query = f"ytsearch1:{title} {artist} original audio"
             info_dict = ydl.extract_info(search_query, download=False)
             
             target_entry = None
@@ -179,7 +183,7 @@ def process_queue_item():
                 target_entry = info_dict['entries'][0]
             
             if not target_entry:
-                logger.error(f"Could not find track on SoundCloud: {title}")
+                logger.error(f"Could not find track on YouTube: {title}")
                 return
                 
             track_url = target_entry.get('webpage_url') or target_entry.get('url') or target_entry.get('id')

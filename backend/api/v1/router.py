@@ -81,6 +81,22 @@ async def debug_db(db: Session = Depends(get_db)):
     except Exception as e:
         return {"success": False, "error": str(e), "traceback": __import__("traceback").format_exc()}
 
+@api_router.get("/debug-queue", summary="View the download queue")
+async def debug_queue():
+    """
+    Returns the current pending items in the download queue.
+    """
+    from services.queue_manager import get_queue
+    try:
+        queue = get_queue()
+        return {
+            "success": True,
+            "total_pending": len(queue),
+            "queue": queue
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @api_router.post("/youtube-sync/force", summary="Force sync trending song from YouTube")
 async def force_youtube_sync(db: Session = Depends(get_db)):
     """

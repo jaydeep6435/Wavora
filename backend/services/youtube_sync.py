@@ -174,13 +174,32 @@ def process_queue_item():
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Using YouTube search (ytsearch1) with 'original audio' to avoid DJ/remix/beat versions
-            search_query = f"ytsearch1:{title} {artist} original audio"
+            # Search top 5 results to find the exact official song
+            search_query = f"ytsearch5:{title} {artist} original audio"
             info_dict = ydl.extract_info(search_query, download=False)
             
             target_entry = None
             if 'entries' in info_dict and len(info_dict['entries']) > 0:
-                target_entry = info_dict['entries'][0]
+                # 1. Look for an exact match (duration within 15 seconds of iTunes duration)
+                for entry in info_dict['entries']:
+                    if not entry: continue
+                    vid_duration = entry.get('duration', 0)
+                    if expected_duration > 0 and abs(vid_duration - expected_duration) <= 15:
+                        target_entry = entry
+                        logger.info(f"Exact duration match found! ({vid_duration}s vs {expected_duration}s)")
+                        break
+                
+                # 2. Fallback: If no exact match, find the first video that is a full song (>= 60 seconds)
+                if not target_entry:
+                    for entry in info_dict['entries']:
+                        if entry and entry.get('duration', 0) >= 60:
+                            target_entry = entry
+                            logger.info(f"No exact match, falling back to first full video ({entry.get('duration')}s)")
+                            break
+                            
+                # 3. Last resort: Fallback to the very first result if everything was short
+                if not target_entry:
+                    target_entry = info_dict['entries'][0]
             
             if not target_entry:
                 logger.error(f"Could not find track on YouTube: {title}")

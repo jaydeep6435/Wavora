@@ -7,6 +7,9 @@ class AlbumBase(BaseModel):
     artist: str
     thumbnail_path: Optional[str] = None
 
+class AlbumCreateRequest(BaseModel):
+    album_name: str  # The album/artist name to search for on iTunes
+
 class AlbumResponse(AlbumBase):
     id: int
     songs: List[SongResponse] = []

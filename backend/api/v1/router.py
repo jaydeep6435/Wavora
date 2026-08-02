@@ -162,6 +162,114 @@ def map_song_to_response(song: Song) -> SongResponse:
 
 from models.album import Album
 from schemas.song import AlbumResponse
+from schemas.album import AlbumCreateRequest
+
+@api_router.post("/albums", summary="Create an album from iTunes and queue its songs for download")
+async def create_album(request: AlbumCreateRequest, db: Session = Depends(get_db)):
+    """
+    Search iTunes for an album by name, create it in the database,
+    and add all its songs to the download queue for background processing.
+    """
+    import httpx
+    from services.queue_manager import push_queue, is_album_downloaded, mark_album_downloaded
+
+    search_query = request.album_name
+    logger.info(f"Searching iTunes for album: {search_query}")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://itunes.apple.com/search",
+                params={
+                    "term": search_query,
+                    "media": "music",
+                    "entity": "album",
+                    "limit": 5,
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"iTunes API error: {str(e)}")
+
+    results = data.get("results", [])
+    if not results:
+        raise HTTPException(status_code=404, detail=f"No album found on iTunes for: {search_query}")
+
+    # Pick the first album result
+    album_data = results[0]
+    collection_id = str(album_data.get("collectionId", ""))
+    album_title = album_data.get("collectionName", search_query)
+    album_artist = album_data.get("artistName", "Unknown Artist")
+    artwork_url = (album_data.get("artworkUrl100") or "").replace("100x100bb", "600x600bb")
+
+    # Check if album already exists in DB
+    existing = db.query(Album).filter(Album.itunes_id == collection_id).first()
+    if existing:
+        return {
+            "success": False,
+            "message": f"Album '{album_title}' already exists in the database.",
+            "album_id": existing.id
+        }
+
+    # Create Album record in DB
+    new_album = Album(
+        title=album_title,
+        artist=album_artist,
+        thumbnail_path=artwork_url or None,
+        itunes_id=collection_id
+    )
+    db.add(new_album)
+    db.commit()
+    db.refresh(new_album)
+    logger.info(f"Created album: {album_title} (id={new_album.id})")
+
+    # Now fetch all tracks in this album from iTunes
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            tracks_response = await client.get(
+                "https://itunes.apple.com/lookup",
+                params={
+                    "id": collection_id,
+                    "entity": "song",
+                }
+            )
+            tracks_response.raise_for_status()
+            tracks_data = tracks_response.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"iTunes tracks fetch error: {str(e)}")
+
+    tracks = [t for t in tracks_data.get("results", []) if t.get("wrapperType") == "track"]
+    logger.info(f"Found {len(tracks)} tracks for album '{album_title}'")
+
+    # Queue all tracks for background download
+    queue_items = []
+    for track in tracks:
+        track_title = track.get("trackName", "")
+        track_artist = track.get("artistName", album_artist)
+        duration_ms = track.get("trackTimeMillis", 0)
+        duration_s = round(duration_ms / 1000, 2) if duration_ms else 0.0
+        track_artwork = (track.get("artworkUrl100") or artwork_url or "").replace("100x100bb", "600x600bb")
+
+        queue_items.append({
+            "title": track_title,
+            "artist": track_artist,
+            "album_id": new_album.id,
+            "thumbnail_url": track_artwork,
+            "duration": duration_s
+        })
+
+    push_queue(queue_items)
+    mark_album_downloaded(collection_id)
+
+    return {
+        "success": True,
+        "message": f"Album '{album_title}' created with {len(tracks)} songs queued for download.",
+        "album_id": new_album.id,
+        "album_title": album_title,
+        "album_artist": album_artist,
+        "tracks_queued": len(tracks)
+    }
 
 @api_router.get("/albums", response_model=List[AlbumResponse], summary="Get all albums")
 async def get_albums(

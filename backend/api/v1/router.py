@@ -119,6 +119,64 @@ async def debug_reset(db: Session = Depends(get_db)):
         db.rollback()
         return {"success": False, "error": str(e)}
 
+@api_router.post("/reconcile-queue", summary="Link existing songs to albums and shrink the queue")
+async def reconcile_queue(db: Session = Depends(get_db)):
+    """
+    Scans the download queue and checks each item against songs already in the DB.
+    If a matching song (by title + artist) is found, it links it to the album
+    and removes it from the queue — no YouTube download needed.
+    Only genuinely missing songs remain in the queue afterwards.
+    """
+    from models.sync_state import DownloadQueue
+    from models.song import Song
+    from sqlalchemy import func
+
+    queue_items = db.query(DownloadQueue).order_by(DownloadQueue.id.asc()).all()
+    total = len(queue_items)
+
+    if total == 0:
+        return {"success": True, "message": "Queue is already empty.", "linked": 0, "remaining": 0}
+
+    linked = 0
+    remaining = 0
+    link_report = []
+
+    for item in queue_items:
+        # Try to find existing song by title+artist match (case-insensitive)
+        existing_song = db.query(Song).filter(
+            func.lower(Song.title) == func.lower(item.title),
+            func.lower(Song.artist) == func.lower(item.artist)
+        ).first()
+
+        if existing_song:
+            # Song already exists! Just link it to the album if needed
+            if existing_song.album_id != item.album_id:
+                existing_song.album_id = item.album_id
+                db.add(existing_song)
+
+            # Remove from queue — no download needed
+            db.delete(item)
+            linked += 1
+            link_report.append({
+                "title": item.title,
+                "artist": item.artist,
+                "action": "linked_to_album",
+                "album_id": item.album_id
+            })
+        else:
+            remaining += 1
+
+    db.commit()
+    logger.info(f"Reconcile complete: {linked} linked, {remaining} still need download")
+
+    return {
+        "success": True,
+        "message": f"Reconcile complete! {linked} songs linked instantly, {remaining} songs still need YouTube download.",
+        "linked": linked,
+        "remaining": remaining,
+        "linked_songs": link_report
+    }
+
 @api_router.post("/requeue-albums", summary="Re-queue all empty albums for download")
 async def requeue_albums(db: Session = Depends(get_db)):
     """

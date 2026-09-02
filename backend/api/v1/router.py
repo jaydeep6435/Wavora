@@ -126,12 +126,9 @@ async def force_youtube_sync(db: Session = Depends(get_db)):
     uploads it to Cloudinary, and then syncs the database.
     """
     try:
-        # Run the download & upload to Cloudinary
         yt_result = sync_trending_youtube_song()
         if not yt_result.get("success"):
             raise Exception(yt_result.get("error"))
-            
-        # Trigger DB sync so the new song shows up
         db_results = await sync_songs(db)
         return {
             "success": True, 
@@ -141,6 +138,52 @@ async def force_youtube_sync(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Manual YouTube sync failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/process-queue", summary="Force-process ALL items in the download queue")
+async def force_process_queue():
+    """
+    Immediately processes every pending song in the download queue one by one.
+    Use this to bulk-download all queued songs without waiting for the scheduler.
+    """
+    import asyncio
+    from services.queue_manager import get_queue, pop_queue
+    from services.youtube_sync import process_queue_item
+
+    queue_snapshot = get_queue()
+    total = len(queue_snapshot)
+
+    if total == 0:
+        return {"success": True, "message": "Queue is already empty. Nothing to process.", "processed": 0}
+
+    logger.info(f"Force-processing {total} items from the download queue...")
+
+    processed = 0
+    failed = 0
+    results = []
+
+    for i in range(total):
+        item = get_queue()
+        if not item:
+            break
+        current = item[0]
+        try:
+            # Run the blocking download in a thread pool to not block the event loop
+            await asyncio.get_event_loop().run_in_executor(None, process_queue_item)
+            processed += 1
+            results.append({"title": current["title"], "artist": current["artist"], "status": "queued_for_download"})
+            logger.info(f"Processed {processed}/{total}: {current['title']}")
+        except Exception as e:
+            failed += 1
+            results.append({"title": current["title"], "artist": current["artist"], "status": f"error: {str(e)}"})
+            logger.error(f"Failed to process {current['title']}: {e}")
+
+    return {
+        "success": True,
+        "message": f"Finished processing queue. {processed} downloaded, {failed} failed.",
+        "processed": processed,
+        "failed": failed,
+        "results": results
+    }
 
 def map_song_to_response(song: Song) -> SongResponse:
     """

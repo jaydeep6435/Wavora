@@ -119,6 +119,73 @@ async def debug_reset(db: Session = Depends(get_db)):
         db.rollback()
         return {"success": False, "error": str(e)}
 
+@api_router.post("/requeue-albums", summary="Re-queue all empty albums for download")
+async def requeue_albums(db: Session = Depends(get_db)):
+    """
+    Scans all albums in DB that have zero songs.
+    For each, fetches tracks from iTunes using stored itunes_id and re-queues them for download.
+    """
+    import httpx
+    from models.album import Album
+    from models.song import Song
+    from services.queue_manager import push_queue
+
+    albums = db.query(Album).all()
+    total_queued = 0
+    report = []
+
+    for album in albums:
+        song_count = db.query(Song).filter(Song.album_id == album.id).count()
+        if song_count > 0:
+            report.append({"album": album.title, "status": "skipped (already has songs)", "songs": song_count})
+            continue
+
+        if not album.itunes_id:
+            report.append({"album": album.title, "status": "skipped (no iTunes ID)"})
+            continue
+
+        # Fetch tracks from iTunes
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://itunes.apple.com/lookup",
+                    params={"id": album.itunes_id, "entity": "song"}
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as e:
+            report.append({"album": album.title, "status": f"iTunes fetch error: {str(e)}"})
+            continue
+
+        tracks = [t for t in data.get("results", []) if t.get("wrapperType") == "track"]
+        if not tracks:
+            report.append({"album": album.title, "status": "no tracks found on iTunes"})
+            continue
+
+        artwork = album.thumbnail_path or ""
+        queue_items = []
+        for track in tracks:
+            duration_ms = track.get("trackTimeMillis", 0)
+            queue_items.append({
+                "title": track.get("trackName", ""),
+                "artist": track.get("artistName", album.artist),
+                "album_id": album.id,
+                "thumbnail_url": artwork,
+                "duration": round(duration_ms / 1000, 2) if duration_ms else 0.0
+            })
+
+        push_queue(queue_items)
+        total_queued += len(queue_items)
+        report.append({"album": album.title, "status": "queued", "tracks_queued": len(queue_items)})
+        logger.info(f"Re-queued {len(queue_items)} tracks for album '{album.title}'")
+
+    return {
+        "success": True,
+        "total_queued": total_queued,
+        "albums_processed": len(albums),
+        "report": report
+    }
+
 @api_router.post("/youtube-sync/force", summary="Force sync trending song from YouTube")
 async def force_youtube_sync(db: Session = Depends(get_db)):
     """

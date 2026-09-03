@@ -132,6 +132,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       wrapperRef.current = wrapper;
 
       if (mobile && wrapper) {
+        wrapper.classList.add('mobile-waveform');
         wrapper.style.touchAction = 'pan-x';
         wrapper.style.overflowX = 'auto';
         (wrapper.style as unknown as Record<string, string>).WebkitOverflowScrolling = 'touch';

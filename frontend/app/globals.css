@@ -208,6 +208,10 @@ body:has(.hover-rainbow-text:hover) main {
   pointer-events: none;
 }
 
+.mobile-waveform::part(cursor)::after {
+  display: none !important;
+}
+
 ::part(region-handle) {
   width: 4px !important;
   background-color: #ffffff !important;

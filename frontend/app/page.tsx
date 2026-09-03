@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, Music2, Play, Youtube } from 'lucide-react';
+import { Search, Music2, Play, PlaySquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { MusicService, Song, Album } from '../services/api';
@@ -174,7 +174,7 @@ export default function Home() {
             onClick={() => router.push('/custom')}
             className="flex items-center justify-center gap-2 px-6 py-4 bg-white/10 hover:bg-white/20 text-white rounded-[24px] font-bold transition-all h-[65px] border border-white/5 whitespace-nowrap"
           >
-            <Youtube className="w-5 h-5 text-red-500" />
+            <PlaySquare className="w-5 h-5 text-red-500" />
             Paste YouTube Link
           </button>
           

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Youtube, Link as LinkIcon, Loader2, ArrowLeft } from 'lucide-react';
+import { PlaySquare, Link as LinkIcon, Loader2, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import axios from 'axios';
@@ -115,7 +115,7 @@ export default function CustomYoutubePage() {
             
             <div className="flex flex-col items-center text-center mt-6 mb-10">
               <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
-                <Youtube className="w-10 h-10 text-red-500" />
+                <PlaySquare className="w-10 h-10 text-red-500" />
               </div>
               <h1 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">Paste YouTube Link</h1>
               <p className="text-zinc-400 text-lg">We'll fetch the audio instantly so you can slice your perfect 30-second ringtone.</p>

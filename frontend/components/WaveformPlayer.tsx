@@ -469,7 +469,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
         {isMobile && isReady && (
           <p className="text-center text-[10px] text-zinc-600 mt-1">
-            Swipe waveform to seek · Drag handles to adjust selection
+            Scrub waveform to seek · Drag handles to adjust
           </p>
         )}
       </div>

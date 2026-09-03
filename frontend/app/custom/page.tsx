@@ -5,11 +5,8 @@ import { useRouter } from 'next/navigation';
 import { PlaySquare, Link as LinkIcon, Loader2, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import axios from 'axios';
-import { Song } from '../../services/api';
+import { Song, api } from '../../services/api';
 import WaveformPlayer from '../../components/WaveformPlayer';
-
-const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 export default function CustomYoutubePage() {
   const router = useRouter();
@@ -30,7 +27,7 @@ export default function CustomYoutubePage() {
 
     setIsLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/youtube-custom/process`, { url });
+      const response = await api.post(`/youtube-custom/process`, { url });
       
       if (response.data && response.data.success && response.data.song) {
         toast.success('Audio ready to slice!');
@@ -62,7 +59,7 @@ export default function CustomYoutubePage() {
               className="absolute inset-0"
             >
               <img 
-                src={song.thumbnail_url.startsWith('http') ? song.thumbnail_url : `${API_BASE_URL.replace('/api/v1', '')}${song.thumbnail_url}`} 
+                src={song.thumbnail_url.startsWith('http') ? song.thumbnail_url : `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '')}${song.thumbnail_url}`} 
                 alt="bg"
                 className="w-full h-full object-cover scale-110 blur-[100px] saturate-[1.5]"
               />

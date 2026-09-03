@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 import yt_dlp
-from services.audio_processor import slice_audio_async
+from services.audio_clipper import slice_audio_async
 
 logger = logging.getLogger("wavora.youtube_custom")
 router = APIRouter(prefix="/youtube-custom", tags=["YouTube Custom"])

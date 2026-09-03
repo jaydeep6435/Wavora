@@ -193,23 +193,21 @@ body:has(.hover-rainbow-text:hover) main {
   z-index: 20 !important;
 }
 
-/* Playhead handle (knob at the top) */
-::part(cursor)::after {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 16px;
-  height: 16px;
-  background-color: #ef4444;
-  border-radius: 50%;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
-  pointer-events: none;
-}
-
-.mobile-waveform::part(cursor)::after {
-  display: none !important;
+/* Playhead handle (knob at the top) - Desktop Only */
+@media (min-width: 768px) {
+  ::part(cursor)::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 16px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+    pointer-events: none;
+  }
 }
 
 ::part(region-handle) {

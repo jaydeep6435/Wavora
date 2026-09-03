@@ -144,6 +144,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
           style.innerHTML = `
             *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
             * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+            [part="cursor"] { display: none !important; }
           `;
           shadow.appendChild(style);
         }

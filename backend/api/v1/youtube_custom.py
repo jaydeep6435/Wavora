@@ -78,7 +78,8 @@ def process_youtube_link(request: YouTubeProcessRequest):
         'outtmpl': os.path.join(tmp_dir, f'custom_{video_id}.%(ext)s'),
         'quiet': True,
         'no_warnings': True,
-        'extract_flat': False
+        'extract_flat': False,
+        'noplaylist': True,
     }
 
     try:

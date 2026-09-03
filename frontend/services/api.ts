@@ -9,11 +9,11 @@ export const api = axios.create({
 });
 
 export interface Song {
-  id: number | string;
+  id: number;
   title: string;
   artist: string;
-  audio_path?: string;
-  thumbnail_path?: string | null;
+  audio_path: string;
+  thumbnail_path: string | null;
   audio_url: string;
   thumbnail_url: string | null;
   duration: number;
@@ -30,12 +30,6 @@ export interface Album {
 
 export interface ClipRequest {
   songId: number;
-  startTime: number;
-  endTime: number;
-}
-
-export interface CustomClipRequest {
-  videoId: string;
   startTime: number;
   endTime: number;
 }
@@ -67,12 +61,6 @@ export const MusicService = {
   // Request a 30-second maximum clip from a song
   async generateClip(request: ClipRequest): Promise<ClipResponse> {
     const response = await api.post<ClipResponse>('/generate-clip', request);
-    return response.data;
-  },
-
-  // Request a clip from a temporarily downloaded YouTube custom song
-  async generateCustomClip(request: { videoId: string; startTime: number; endTime: number }): Promise<ClipResponse> {
-    const response = await api.post<ClipResponse>('/youtube-custom/generate-custom-clip', request);
     return response.data;
   },
 

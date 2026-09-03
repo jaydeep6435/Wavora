@@ -57,14 +57,11 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(run_sync_background())
     
     from services.youtube_sync import populate_album_queue, process_queue_item
-    from api.v1.youtube_custom import cleanup_temp_files
     # 3. Start APScheduler for YouTube Sync
     # Populate Album queue at midnight
     scheduler.add_job(populate_album_queue, 'cron', hour=0, minute=0)
     # Process one song from the queue every 2 minutes (safe rate to avoid IP bans)
     scheduler.add_job(process_queue_item, 'cron', minute='*/2')
-    # Cleanup temporary custom YouTube files every 30 minutes
-    scheduler.add_job(cleanup_temp_files, 'cron', minute='*/30')
     scheduler.start()
 
     yield

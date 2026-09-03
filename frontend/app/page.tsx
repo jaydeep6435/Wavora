@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, Music2, Play, PlaySquare } from 'lucide-react';
+import { Search, Music2, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 import { MusicService, Song, Album } from '../services/api';
 import WaveformPlayer from '../components/WaveformPlayer';
 import { SongCardSkeleton } from '../components/ui/Skeleton';
@@ -11,7 +10,6 @@ import { EmptyState } from '../components/ui/EmptyState';
 import toast from 'react-hot-toast';
 
 export default function Home() {
-  const router = useRouter();
   const [songs, setSongs] = useState<Song[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -168,16 +166,8 @@ export default function Home() {
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full md:w-auto"
+          className="flex items-center gap-4 w-full md:w-auto"
         >
-          <button 
-            onClick={() => router.push('/custom')}
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-white/10 hover:bg-white/20 text-white rounded-[24px] font-bold transition-all h-[65px] border border-white/5 whitespace-nowrap"
-          >
-            <PlaySquare className="w-5 h-5 text-red-500" />
-            Paste YouTube Link
-          </button>
-          
           <div className="relative w-full md:w-[400px] group">
             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-white" />

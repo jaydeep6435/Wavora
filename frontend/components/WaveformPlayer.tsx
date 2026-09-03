@@ -13,10 +13,6 @@ interface WaveformPlayerProps {
   onClose: () => void;
 }
 
-// Mobile: pixels per second of audio. Tuned so ~30s of audio fills the viewport.
-// At 12 px/sec on a 375px phone: 31s visible, 30s clip = 360px (fits perfectly).
-const MOBILE_PX_PER_SEC = 12;
-
 export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
   const getFullUrl = (url: string | null) => {
     if (!url) return '';
@@ -33,16 +29,11 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
   // Mobile drag tracking
   const dragRef = useRef<{
-    type: 'left' | 'right' | 'center';
+    type: 'left' | 'right';
     startX: number;
-    initialStart: number;
-    initialEnd: number;
+    initialLeft: number;
+    initialRight: number;
   } | null>(null);
-
-  const scrollTimeRef = useRef(0);
-  const clipStartRef = useRef(0);
-  const clipEndRef = useRef(30);
-  const durationRef = useRef(0);
 
   // ─── State ─────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(false);
@@ -50,17 +41,34 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
   const [isReady, setIsReady] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedClip, setGeneratedClip] = useState<string | null>(null);
+  
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  
+  // Desktop state
   const [clipStart, setClipStart] = useState(0);
   const [clipEnd, setClipEnd] = useState(30);
-  // Incremented on waveform scroll to trigger overlay re-render
-  const [, setScrollTick] = useState(0);
 
-  // Keep refs in sync with state (avoids stale closures in event handlers)
-  useEffect(() => { clipStartRef.current = clipStart; }, [clipStart]);
-  useEffect(() => { clipEndRef.current = clipEnd; }, [clipEnd]);
-  useEffect(() => { durationRef.current = duration; }, [duration]);
+  // Mobile state (Fixed Window Model)
+  const [pxPerSec, setPxPerSec] = useState(10);
+  const [scrollPx, setScrollPx] = useState(0);
+  const [mobileEdges, setMobileEdges] = useState({ left: 0, right: 300 });
+
+  // ─── Sync Refs for Callbacks ───────────────────────────────────
+  const pxPerSecRef = useRef(pxPerSec);
+  useEffect(() => { pxPerSecRef.current = pxPerSec; }, [pxPerSec]);
+
+  // Derived unified boundaries
+  const actualClipStart = isMobile ? Math.min(duration, (scrollPx + mobileEdges.left) / pxPerSec) : clipStart;
+  const actualClipEnd = isMobile ? Math.min(duration, (scrollPx + mobileEdges.right) / pxPerSec) : clipEnd;
+  const actualClipDuration = Math.max(0, actualClipEnd - actualClipStart);
+
+  const actualClipStartRef = useRef(0);
+  const actualClipEndRef = useRef(30);
+  useEffect(() => {
+    actualClipStartRef.current = actualClipStart;
+    actualClipEndRef.current = actualClipEnd;
+  }, [actualClipStart, actualClipEnd]);
 
   // ─── Detect mobile on mount ────────────────────────────────────
   useEffect(() => {
@@ -77,13 +85,18 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
   // ─── Initialize WaveSurfer ─────────────────────────────────────
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !viewportRef.current) return;
     let isCancelled = false;
 
-    // Always check window directly (state might not be set yet on first render)
     const mobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    
+    // Dynamically calculate pxPerSec so 32 seconds fits the screen width perfectly
+    let currentPxPerSec = 10;
+    if (mobile) {
+      currentPxPerSec = viewportRef.current.clientWidth / 32;
+      setPxPerSec(currentPxPerSec);
+    }
 
-    // Desktop uses Regions plugin; mobile uses custom overlay
     const regions = mobile ? null : RegionsPlugin.create();
     if (regions) regionsRef.current = regions;
 
@@ -97,11 +110,11 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       barGap: mobile ? 1 : 2,
       barRadius: 3,
       height: mobile ? 80 : 130,
-      minPxPerSec: mobile ? MOBILE_PX_PER_SEC : 0,
+      minPxPerSec: mobile ? currentPxPerSec : 0,
       fillParent: !mobile,
       plugins: regions ? [regions] : [],
       url: getFullUrl(song.audio_url),
-      interact: !mobile, // Disable WaveSurfer click-to-seek on mobile
+      interact: !mobile,
     });
 
     wavesurferRef.current = ws;
@@ -112,31 +125,28 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
       const dur = ws.getDuration();
       setDuration(dur);
-      durationRef.current = dur;
-      const endTime = Math.min(30, dur);
-      setClipStart(0);
-      setClipEnd(endTime);
-      clipStartRef.current = 0;
-      clipEndRef.current = endTime;
 
-      // Store wrapper ref for scroll tracking
       const wrapper = ws.getWrapper();
       wrapperRef.current = wrapper;
 
       if (mobile && wrapper) {
-        // Enable smooth horizontal-only touch scrolling
         wrapper.classList.add('hide-scrollbar');
         wrapper.style.touchAction = 'pan-x';
         wrapper.style.overflowX = 'auto';
         (wrapper.style as unknown as Record<string, string>).WebkitOverflowScrolling = 'touch';
-        // Hide scrollbar for cleaner look
         wrapper.style.scrollbarWidth = 'none';
         (wrapper.style as unknown as Record<string, string>).msOverflowStyle = 'none';
-      }
 
-      // Desktop: add draggable/resizable region
-      if (regions) {
-        try {
+        // Initialize fixed mobile window edges (e.g. 10px padding from edges, up to 30s)
+        const vw = viewportRef.current!.clientWidth;
+        const initLeft = 10;
+        const initRight = Math.min(vw - 10, initLeft + 30 * currentPxPerSec);
+        setMobileEdges({ left: initLeft, right: initRight });
+      } else {
+        const endTime = Math.min(30, dur);
+        setClipStart(0);
+        setClipEnd(endTime);
+        if (regions) {
           regions.addRegion({
             start: 0,
             end: endTime,
@@ -147,19 +157,15 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
             minLength: 5,
             maxLength: 30,
           });
-        } catch (e) {
-          console.warn('Region error:', e);
         }
       }
     });
 
-    // Playback events
     ws.on('audioprocess', (time) => {
       if (isCancelled) return;
       setCurrentTime(time);
-      // Loop within clip boundaries
-      if (ws.isPlaying() && time >= clipEndRef.current) {
-        ws.setTime(clipStartRef.current);
+      if (ws.isPlaying() && time >= actualClipEndRef.current) {
+        ws.setTime(actualClipStartRef.current);
       }
     });
 
@@ -177,7 +183,6 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       }
     });
 
-    // Desktop: sync region changes to state
     if (regions) {
       regions.on('region-updated', (region) => {
         if (!isCancelled) {
@@ -193,18 +198,16 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     };
   }, [song.audio_url]);
 
-  // ─── Mobile: track waveform scroll position ───────────────────
+  // ─── Mobile: Native scroll tracking ──────────────────────────────
   useEffect(() => {
     if (!isMobile || !isReady || !wrapperRef.current) return;
-
     const wrapper = wrapperRef.current;
     let rafId: number;
 
     const onScroll = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        scrollTimeRef.current = wrapper.scrollLeft / MOBILE_PX_PER_SEC;
-        setScrollTick((n) => n + 1);
+        setScrollPx(wrapper.scrollLeft);
       });
     };
 
@@ -215,61 +218,44 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     };
   }, [isMobile, isReady]);
 
-  // ─── Mobile: touch drag handlers ──────────────────────────────
+  // ─── Mobile: Fixed handle drag logic ───────────────────────────
   const handleDragStart = useCallback(
-    (type: 'left' | 'right' | 'center', e: React.TouchEvent) => {
+    (type: 'left' | 'right', e: React.TouchEvent) => {
       e.stopPropagation();
-      e.preventDefault();
       const touch = e.touches[0];
       dragRef.current = {
         type,
         startX: touch.clientX,
-        initialStart: clipStartRef.current,
-        initialEnd: clipEndRef.current,
+        initialLeft: mobileEdges.left,
+        initialRight: mobileEdges.right,
       };
     },
-    [],
+    [mobileEdges],
   );
 
   const handleDragMove = useCallback((e: React.TouchEvent) => {
     const drag = dragRef.current;
     if (!drag) return;
     e.stopPropagation();
-    e.preventDefault();
 
     const touch = e.touches[0];
     const deltaX = touch.clientX - drag.startX;
-    const deltaTime = deltaX / MOBILE_PX_PER_SEC;
-    const dur = durationRef.current;
-    const clipDur = drag.initialEnd - drag.initialStart;
+    const viewportWidth = viewportRef.current?.clientWidth || 300;
+    const pps = pxPerSecRef.current;
 
-    if (drag.type === 'center') {
-      // Slide the whole selection window through the song
-      let newStart = drag.initialStart + deltaTime;
-      let newEnd = drag.initialEnd + deltaTime;
-      // Clamp to song boundaries, preserving duration
-      if (newStart < 0) {
-        newStart = 0;
-        newEnd = clipDur;
+    if (drag.type === 'left') {
+      let newLeft = drag.initialLeft + deltaX;
+      newLeft = Math.max(0, newLeft);
+      newLeft = Math.min(newLeft, drag.initialRight - 5 * pps); // min 5s
+      setMobileEdges(prev => ({ ...prev, left: newLeft }));
+    } else if (drag.type === 'right') {
+      let newRight = drag.initialRight + deltaX;
+      newRight = Math.min(viewportWidth, newRight);
+      newRight = Math.max(drag.initialLeft + 5 * pps, newRight); // min 5s
+      if (newRight - drag.initialLeft > 30 * pps) {
+          newRight = drag.initialLeft + 30 * pps; // max 30s
       }
-      if (newEnd > dur) {
-        newEnd = dur;
-        newStart = dur - clipDur;
-      }
-      setClipStart(newStart);
-      setClipEnd(newEnd);
-    } else if (drag.type === 'left') {
-      let newStart = drag.initialStart + deltaTime;
-      newStart = Math.max(0, newStart);
-      newStart = Math.min(newStart, drag.initialEnd - 5); // min 5s clip
-      if (drag.initialEnd - newStart > 30) newStart = drag.initialEnd - 30; // max 30s
-      setClipStart(newStart);
-    } else {
-      let newEnd = drag.initialEnd + deltaTime;
-      newEnd = Math.min(dur, newEnd);
-      newEnd = Math.max(drag.initialStart + 5, newEnd); // min 5s clip
-      if (newEnd - drag.initialStart > 30) newEnd = drag.initialStart + 30; // max 30s
-      setClipEnd(newEnd);
+      setMobileEdges(prev => ({ ...prev, right: newRight }));
     }
   }, []);
 
@@ -283,22 +269,24 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     if (!ws) return;
     if (!isPlaying) {
       const t = ws.getCurrentTime();
-      if (t < clipStart || t >= clipEnd) ws.setTime(clipStart);
+      if (t < actualClipStart || t >= actualClipEnd) {
+        ws.setTime(actualClipStart);
+      }
     }
     ws.playPause();
   };
 
   // ─── Generate clip ────────────────────────────────────────────
   const handleGenerate = async () => {
-    if (clipEnd <= clipStart) return;
+    if (actualClipDuration < 1) return;
     setIsGenerating(true);
     setGeneratedClip(null);
     const toastId = toast.loading('Slicing your audio clip...');
     try {
       const response = await MusicService.generateClip({
         songId: song.id,
-        startTime: Number(clipStart.toFixed(3)),
-        endTime: Number(clipEnd.toFixed(3)),
+        startTime: Number(actualClipStart.toFixed(3)),
+        endTime: Number(actualClipEnd.toFixed(3)),
       });
       setGeneratedClip(getFullUrl(response.clipUrl));
       toast.success('Clip generated!', { id: toastId });
@@ -310,7 +298,6 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     }
   };
 
-  // ─── Download ─────────────────────────────────────────────────
   const handleInstantDownload = async () => {
     if (!generatedClip) return;
     const toastId = toast.loading('Downloading...');
@@ -331,19 +318,9 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     }
   };
 
-  // ─── Computed values ──────────────────────────────────────────
-  const clipDuration = clipEnd - clipStart;
+  // Mobile playhead screen position
+  const playheadScreenPx = isMobile ? (currentTime * pxPerSec) - scrollPx : 0;
 
-  // Mobile overlay pixel positions (relative to the visible viewport)
-  const scrollT = scrollTimeRef.current;
-  const selLeftPx = (clipStart - scrollT) * MOBILE_PX_PER_SEC;
-  const selRightPx = (clipEnd - scrollT) * MOBILE_PX_PER_SEC;
-  const selWidthPx = selRightPx - selLeftPx;
-
-  // Playback head position
-  const playheadPx = (currentTime - scrollT) * MOBILE_PX_PER_SEC;
-
-  // ─── Render ───────────────────────────────────────────────────
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -352,7 +329,6 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       transition={{ duration: 0.2 }}
       className="bg-black/40 backdrop-blur-2xl rounded-[24px] md:rounded-[32px] p-4 md:p-10 w-full mx-auto relative border border-white/10 shadow-2xl"
     >
-      {/* Close */}
       <button
         onClick={onClose}
         className="absolute top-4 right-4 md:top-6 md:right-6 p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors z-10"
@@ -360,7 +336,6 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
         <X className="w-5 h-5 md:w-6 md:h-6" />
       </button>
 
-      {/* ─── Song Header ─── */}
       <div className="flex items-center gap-3 md:gap-6 mb-4 md:mb-10 pr-10">
         {song.thumbnail_url ? (
           <img
@@ -381,9 +356,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
         </div>
       </div>
 
-      {/* ─── Waveform Section ─── */}
       <div className="mb-3 md:mb-8">
-        {/* Loading spinner */}
         {!isReady && (
           <div className="h-[80px] md:h-[130px] flex flex-col items-center justify-center gap-2 bg-black/20 rounded-xl border border-white/5">
             <Loader2 className="w-6 h-6 animate-spin text-white" />
@@ -391,151 +364,99 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
           </div>
         )}
 
-        {/* Waveform + overlay container */}
         <div
           ref={viewportRef}
           className={`relative overflow-hidden rounded-xl ${
             !isMobile ? 'bg-black/20 p-4 md:p-6 border border-white/5 rounded-2xl' : ''
           }`}
         >
-          {/* WaveSurfer renders here — always in same DOM position */}
           <div
             ref={containerRef}
             className={`w-full ${!isReady ? 'hidden' : 'block'}`}
           />
 
-          {/* ===== MOBILE SELECTION OVERLAY ===== */}
+          {/* ===== FIXED MOBILE OVERLAY ===== */}
           {isMobile && isReady && (
-            <>
-              {/* ── Left dimmed area ── */}
+            <div className="absolute inset-0 z-10 pointer-events-none">
+              
+              {/* Dimmed Left */}
               <div
-                className="absolute top-0 bottom-0 left-0 bg-black/55"
-                style={{
-                  width: Math.max(0, selLeftPx),
-                  pointerEvents: 'none',
-                }}
+                className="absolute top-0 bottom-0 left-0 bg-black/55 backdrop-blur-[1px]"
+                style={{ width: mobileEdges.left }}
               />
 
-              {/* ── Right dimmed area ── */}
+              {/* Dimmed Right */}
               <div
-                className="absolute top-0 bottom-0 bg-black/55"
-                style={{
-                  left: Math.max(0, selRightPx),
-                  right: 0,
-                  pointerEvents: 'none',
-                }}
+                className="absolute top-0 bottom-0 bg-black/55 backdrop-blur-[1px]"
+                style={{ left: mobileEdges.right, right: 0 }}
               />
 
-              {/* ── Selection frame (visual border) ── */}
+              {/* Selection Frame */}
               <div
-                className="absolute top-0 bottom-0"
-                style={{
-                  left: selLeftPx,
-                  width: Math.max(0, selWidthPx),
-                  borderTop: '3px solid rgba(255, 255, 255, 0.75)',
-                  borderBottom: '3px solid rgba(255, 255, 255, 0.75)',
-                  pointerEvents: 'none',
-                  boxSizing: 'border-box',
-                }}
+                className="absolute top-0 bottom-0 box-border border-t-[3px] border-b-[3px] border-white/80"
+                style={{ left: mobileEdges.left, width: mobileEdges.right - mobileEdges.left }}
               >
-                {/* Duration label centered in the selection */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-                  <span className="text-white/60 font-bold text-xl tabular-nums tracking-tight">
-                    {clipDuration.toFixed(1)}
+                <div className="absolute inset-0 flex items-center justify-center opacity-50">
+                  <span className="text-white font-bold text-xl tabular-nums tracking-tight drop-shadow-md">
+                    {actualClipDuration.toFixed(1)}
                   </span>
                 </div>
               </div>
 
-              {/* ── Center drag zone ── 
-                  Touch here and drag left/right to slide the whole clip.
-                  Sits between the handles, captures touch to prevent waveform scroll. */}
+              {/* Left Handle */}
               <div
-                className="absolute top-0 bottom-0"
-                style={{
-                  left: selLeftPx + 22,
-                  width: Math.max(0, selWidthPx - 44),
-                  pointerEvents: 'auto',
-                  touchAction: 'none',
-                  cursor: 'grab',
-                  zIndex: 15,
-                }}
-                onTouchStart={(e) => handleDragStart('center', e)}
-                onTouchMove={handleDragMove}
-                onTouchEnd={handleDragEnd}
-              />
-
-              {/* ── Left handle ── 
-                  Visual: 5px white bar. Touch target: 40px wide for easy grabbing. */}
-              <div
-                className="absolute top-0 bottom-0 flex items-center justify-center"
-                style={{
-                  left: selLeftPx - 18,
-                  width: 40,
-                  pointerEvents: 'auto',
-                  touchAction: 'none',
-                  cursor: 'col-resize',
-                  zIndex: 20,
-                }}
+                className="absolute top-0 bottom-0 flex items-center justify-center pointer-events-auto"
+                style={{ left: mobileEdges.left - 20, width: 40, cursor: 'col-resize' }}
                 onTouchStart={(e) => handleDragStart('left', e)}
                 onTouchMove={handleDragMove}
                 onTouchEnd={handleDragEnd}
               >
-                <div className="w-[5px] h-9 bg-white rounded-full shadow-lg shadow-white/30" />
+                <div className="w-1.5 h-10 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
               </div>
 
-              {/* ── Right handle ── */}
+              {/* Right Handle */}
               <div
-                className="absolute top-0 bottom-0 flex items-center justify-center"
-                style={{
-                  left: selRightPx - 22,
-                  width: 40,
-                  pointerEvents: 'auto',
-                  touchAction: 'none',
-                  cursor: 'col-resize',
-                  zIndex: 20,
-                }}
+                className="absolute top-0 bottom-0 flex items-center justify-center pointer-events-auto"
+                style={{ left: mobileEdges.right - 20, width: 40, cursor: 'col-resize' }}
                 onTouchStart={(e) => handleDragStart('right', e)}
                 onTouchMove={handleDragMove}
                 onTouchEnd={handleDragEnd}
               >
-                <div className="w-[5px] h-9 bg-white rounded-full shadow-lg shadow-white/30" />
+                <div className="w-1.5 h-10 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
               </div>
 
-              {/* ── Playhead indicator ── */}
-              {isPlaying && playheadPx >= 0 && (
+              {/* Playhead */}
+              {isPlaying && playheadScreenPx >= 0 && playheadScreenPx <= (viewportRef.current?.clientWidth || 9999) && (
                 <div
-                  className="absolute top-0 bottom-0 w-[2px] bg-red-500 pointer-events-none"
-                  style={{ left: playheadPx, zIndex: 25 }}
+                  className="absolute top-0 bottom-0 w-0.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,1)]"
+                  style={{ left: playheadScreenPx, zIndex: 25 }}
                 />
               )}
-            </>
+            </div>
           )}
         </div>
 
-        {/* ─── Time labels ─── */}
         {isReady && (
           <div className="flex justify-between items-center mt-2 md:mt-4 px-1">
-            <span className="text-xs text-zinc-500 font-mono">{formatTime(clipStart)}</span>
+            <span className="text-xs text-zinc-500 font-mono">{formatTime(actualClipStart)}</span>
             <span
               className={`text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                clipDuration > 28 ? 'bg-orange-500/20 text-orange-400' : 'bg-white/10 text-white'
+                actualClipDuration > 28 ? 'bg-orange-500/20 text-orange-400' : 'bg-white/10 text-white'
               }`}
             >
-              {clipDuration.toFixed(1)}s / 30s
+              {actualClipDuration.toFixed(1)}s / 30s
             </span>
-            <span className="text-xs text-zinc-500 font-mono">{formatTime(clipEnd)}</span>
+            <span className="text-xs text-zinc-500 font-mono">{formatTime(actualClipEnd)}</span>
           </div>
         )}
 
-        {/* Mobile interaction hint */}
         {isMobile && isReady && (
           <p className="text-center text-[10px] text-zinc-600 mt-1">
-            Swipe waveform to navigate · Drag handles to adjust · Hold center to slide clip
+            Swipe waveform to seek · Drag handles to adjust selection
           </p>
         )}
       </div>
 
-      {/* ─── Action Buttons ─── */}
       <div className="flex items-center gap-2.5 md:gap-3">
         <button
           onClick={togglePlayback}
@@ -551,7 +472,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
         <button
           onClick={handleGenerate}
-          disabled={!isReady || isGenerating || clipDuration < 1}
+          disabled={!isReady || isGenerating || actualClipDuration < 1}
           className="btn-primary flex-1 h-11 md:h-14 gap-2 text-sm md:text-base disabled:opacity-50 touch-manipulation"
         >
           {isGenerating ? (

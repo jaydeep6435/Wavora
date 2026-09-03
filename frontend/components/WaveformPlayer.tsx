@@ -117,6 +117,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       plugins: regions ? [regions] : [],
       url: getFullUrl(song.audio_url),
       interact: !mobile,
+      autoScroll: false,
     });
 
     wavesurferRef.current = ws;
@@ -219,21 +220,28 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     const onScroll = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        setScrollPx(wrapper.scrollLeft);
+        const newScrollLeft = wrapper.scrollLeft;
+        setScrollPx(newScrollLeft);
         
         const ws = wavesurferRef.current;
-        if (ws && ws.isPlaying()) {
-          ws.pause(); // Pause while actively scrolling to prevent stuttering
+        if (ws) {
+          if (ws.isPlaying()) {
+            ws.pause();
+          }
+          
+          // Instantly snap the playhead to the left bar so that
+          // manual play or auto-play always starts exactly from the beginning of the clip.
+          const newClipStart = Math.min(duration, (newScrollLeft + mobileEdges.left) / pxPerSecRef.current);
+          ws.setTime(newClipStart);
         }
 
         if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
         
         scrollTimeoutRef.current = setTimeout(() => {
-          if (ws && actualClipStartRef.current !== undefined) {
-            ws.setTime(actualClipStartRef.current);
+          if (ws) {
             ws.play();
           }
-        }, 150); // Play instantly 150ms after they stop scrolling
+        }, 150);
       });
     };
 
@@ -459,6 +467,14 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
               >
                 <div className="w-1.5 h-10 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
               </div>
+
+              {/* Clean Playhead */}
+              {isPlaying && playheadScreenPx >= mobileEdges.left && playheadScreenPx <= mobileEdges.right && (
+                <div
+                  className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] pointer-events-none"
+                  style={{ left: playheadScreenPx, zIndex: 25 }}
+                />
+              )}
             </div>
           )}
         </div>

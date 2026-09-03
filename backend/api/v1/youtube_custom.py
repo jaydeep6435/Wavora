@@ -8,7 +8,7 @@ import time
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
-import yt_dlp
+
 from services.audio_clipper import slice_audio_async
 
 logger = logging.getLogger("wavora.youtube_custom")
@@ -84,35 +84,55 @@ def process_youtube_link(request: YouTubeProcessRequest):
     }
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(request.url, download=True)
-            
-            title = info_dict.get('title', 'Unknown Title')
-            artist = info_dict.get('uploader', 'Unknown Artist')
-            duration = info_dict.get('duration', 0.0)
-            thumbnail_url = info_dict.get('thumbnail', '')
-            
-            # Use proxy URL for streaming to bypass CORS
-            stream_url = f"/api/v1/youtube-custom/stream/{video_id}"
-            
-            # The exact filepath yt-dlp saves to after post-processing will end in .mp3
-            expected_filepath = os.path.join(tmp_dir, f'custom_{video_id}.mp3')
-            
-            if not os.path.exists(expected_filepath):
-                raise HTTPException(status_code=500, detail="Failed to download audio file")
+        from pytubefix import YouTube
+        import subprocess
 
-            return {
-                "success": True,
-                "video_id": video_id,
-                "song": {
-                    "id": f"custom_{video_id}", # Special string ID
-                    "title": title,
-                    "artist": artist,
-                    "duration": float(duration) if duration else 180.0,
-                    "thumbnail_url": thumbnail_url,
-                    "audio_url": stream_url
-                }
+        yt = YouTube(request.url, client='WEB')
+        title = yt.title or 'Unknown Title'
+        artist = yt.author or 'Unknown Artist'
+        duration = yt.length or 180.0
+        thumbnail_url = yt.thumbnail_url or ''
+        
+        # Download audio using pytubefix
+        stream = yt.streams.get_audio_only()
+        if not stream:
+            raise HTTPException(status_code=500, detail="No audio stream found")
+            
+        temp_download_path = stream.download(output_path=tmp_dir, filename=f"custom_{video_id}_temp")
+        
+        # Convert the downloaded stream (usually m4a/mp4) to mp3 for WaveSurfer
+        expected_filepath = os.path.join(tmp_dir, f'custom_{video_id}.mp3')
+        
+        # Suppress ffmpeg output by redirecting stdout and stderr
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", temp_download_path, "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", expected_filepath],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        
+        # Cleanup the temp file from pytubefix
+        if os.path.exists(temp_download_path):
+            os.remove(temp_download_path)
+
+        if not os.path.exists(expected_filepath):
+            raise HTTPException(status_code=500, detail="Failed to convert audio file")
+            
+        # Use proxy URL for streaming to bypass CORS
+        stream_url = f"/api/v1/youtube-custom/stream/{video_id}"
+
+        return {
+            "success": True,
+            "video_id": video_id,
+            "song": {
+                "id": f"custom_{video_id}", # Special string ID
+                "title": title,
+                "artist": artist,
+                "duration": float(duration),
+                "thumbnail_url": thumbnail_url,
+                "audio_url": stream_url
             }
+        }
     except Exception as e:
         logger.error(f"Failed to process youtube custom link: {e}")
         raise HTTPException(

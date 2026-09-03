@@ -34,6 +34,8 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     initialLeft: number;
     initialRight: number;
   } | null>(null);
+  
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // ─── State ─────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(false);
@@ -208,6 +210,20 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
         setScrollPx(wrapper.scrollLeft);
+        
+        const ws = wavesurferRef.current;
+        if (ws && ws.isPlaying()) {
+          ws.pause(); // Pause while actively scrolling to prevent stuttering
+        }
+
+        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+        
+        scrollTimeoutRef.current = setTimeout(() => {
+          if (ws && actualClipStartRef.current !== undefined) {
+            ws.setTime(actualClipStartRef.current);
+            ws.play();
+          }
+        }, 150); // Play instantly 150ms after they stop scrolling
       });
     };
 
@@ -261,6 +277,15 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
   const handleDragEnd = useCallback(() => {
     dragRef.current = null;
+    
+    // Play instantly after resizing
+    setTimeout(() => {
+      const ws = wavesurferRef.current;
+      if (ws && actualClipStartRef.current !== undefined) {
+        ws.setTime(actualClipStartRef.current);
+        ws.play();
+      }
+    }, 50);
   }, []);
 
   // ─── Playback ─────────────────────────────────────────────────
@@ -424,14 +449,6 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
               >
                 <div className="w-1.5 h-10 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
               </div>
-
-              {/* Playhead */}
-              {isPlaying && playheadScreenPx >= 0 && playheadScreenPx <= (viewportRef.current?.clientWidth || 9999) && (
-                <div
-                  className="absolute top-0 bottom-0 w-0.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,1)]"
-                  style={{ left: playheadScreenPx, zIndex: 25 }}
-                />
-              )}
             </div>
           )}
         </div>

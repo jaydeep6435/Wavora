@@ -213,17 +213,15 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
 
   // ─── Mobile: Native scroll tracking ──────────────────────────────
   useEffect(() => {
-    if (!isMobile || !isReady || !wrapperRef.current) return;
-    const wrapper = wrapperRef.current;
+    if (!isMobile || !isReady || !wavesurferRef.current) return;
+    const ws = wavesurferRef.current;
     let rafId: number;
 
-    const onScroll = () => {
+    const onScroll = (visibleStartTime: number, visibleEndTime: number, newScrollLeft: number) => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        const newScrollLeft = wrapper.scrollLeft;
         setScrollPx(newScrollLeft);
         
-        const ws = wavesurferRef.current;
         if (ws) {
           if (ws.isPlaying()) {
             ws.pause();
@@ -245,12 +243,12 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       });
     };
 
-    wrapper.addEventListener('scroll', onScroll, { passive: true });
+    ws.on('scroll', onScroll);
     return () => {
-      wrapper.removeEventListener('scroll', onScroll);
+      ws.un('scroll', onScroll);
       cancelAnimationFrame(rafId);
     };
-  }, [isMobile, isReady]);
+  }, [isMobile, isReady, duration, mobileEdges.left]);
 
   // ─── Mobile: Fixed handle drag logic ───────────────────────────
   const handleDragStart = useCallback(

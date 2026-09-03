@@ -59,8 +59,8 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       barWidth: 3,
       barGap: 2,
       barRadius: 3,
-      height: 140,
-      minPxPerSec: isMobile ? 50 : 0, // Force scrolling on mobile
+      height: isMobile ? 100 : 140,
+      minPxPerSec: isMobile ? 60 : 0,
       plugins: [regions],
       url: getFullUrl(song.audio_url),
     });
@@ -76,14 +76,40 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       const endTime = Math.min(30, audioDuration);
       
       try {
+        // Create a custom HTML content element for the region — big enough to grab on mobile
+        const contentEl = document.createElement('div');
+        contentEl.style.cssText = `
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: grab;
+          user-select: none;
+          -webkit-user-select: none;
+          touch-action: none;
+        `;
+        contentEl.innerHTML = `
+          <div style="
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.05em;
+            pointer-events: none;
+          ">⟺ DRAG</div>
+        `;
+
         regions.addRegion({
           start: 0,
           end: endTime,
-          content: 'Clip',
-          color: 'rgba(255, 255, 255, 0.1)',
+          content: contentEl,
+          color: 'rgba(255, 255, 255, 0.08)',
           drag: true,
           resize: true,
-          minLength: 10,
+          minLength: 5,
           maxLength: 30,
         });
         setSelectedRange({ start: 0, end: endTime });
@@ -120,14 +146,6 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     regions.on('region-updated', (region) => {
       if (isCancelled) return;
       setSelectedRange({ start: region.start, end: region.end });
-
-      // Auto-scroll logic for mobile
-      if (isMobile) {
-        const scrollEl = ws.getWrapper();
-        if (scrollEl) {
-           // Native scrolling catches up
-        }
-      }
     });
 
     return () => {
@@ -135,6 +153,7 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       ws.destroy();
     };
   }, [song.audio_url]);
+
 
   const togglePlayback = () => {
     if (wavesurferRef.current) {

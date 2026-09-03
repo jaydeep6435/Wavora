@@ -324,11 +324,21 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
     setGeneratedClip(null);
     const toastId = toast.loading('Slicing your audio clip...');
     try {
-      const response = await MusicService.generateClip({
-        songId: song.id,
-        startTime: Number(actualClipStart.toFixed(3)),
-        endTime: Number(actualClipEnd.toFixed(3)),
-      });
+      let response;
+      if (typeof song.id === 'string' && song.id.startsWith('custom_')) {
+        const videoId = song.id.replace('custom_', '');
+        response = await MusicService.generateCustomClip({
+          videoId,
+          startTime: Number(actualClipStart.toFixed(3)),
+          endTime: Number(actualClipEnd.toFixed(3)),
+        });
+      } else {
+        response = await MusicService.generateClip({
+          songId: song.id as number,
+          startTime: Number(actualClipStart.toFixed(3)),
+          endTime: Number(actualClipEnd.toFixed(3)),
+        });
+      }
       setGeneratedClip(getFullUrl(response.clipUrl));
       toast.success('Clip generated!', { id: toastId });
     } catch (err) {

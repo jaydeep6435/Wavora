@@ -10,9 +10,16 @@ from schemas.clip import ClipGenerateRequest
 from typing import List
 from services.audio_clipper import slice_audio_async
 from services.song_scanner import sync_songs
+from api.v1.songs import router as songs_router
+from api.v1.albums import router as albums_router
+from api.v1.youtube_custom import router as youtube_custom_router
 
 logger = logging.getLogger("wavora.router")
 api_router = APIRouter()
+
+api_router.include_router(songs_router)
+api_router.include_router(albums_router)
+api_router.include_router(youtube_custom_router)
 
 @api_router.post("/sync", summary="Force sync library with Cloudinary")
 async def force_sync(db: Session = Depends(get_db)):

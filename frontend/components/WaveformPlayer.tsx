@@ -132,12 +132,21 @@ export default function WaveformPlayer({ song, onClose }: WaveformPlayerProps) {
       wrapperRef.current = wrapper;
 
       if (mobile && wrapper) {
-        wrapper.classList.add('hide-scrollbar');
         wrapper.style.touchAction = 'pan-x';
         wrapper.style.overflowX = 'auto';
         (wrapper.style as unknown as Record<string, string>).WebkitOverflowScrolling = 'touch';
-        wrapper.style.scrollbarWidth = 'none';
-        (wrapper.style as unknown as Record<string, string>).msOverflowStyle = 'none';
+        
+        // The scrollable element is actually inside WaveSurfer's shadow DOM.
+        // We must inject a style tag to kill the global red scrollbar thumb.
+        const shadow = wrapper.shadowRoot;
+        if (shadow) {
+          const style = document.createElement('style');
+          style.innerHTML = `
+            *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+            * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+          `;
+          shadow.appendChild(style);
+        }
 
         // Initialize fixed mobile window edges (e.g. 10px padding from edges, up to 30s)
         const vw = viewportRef.current!.clientWidth;

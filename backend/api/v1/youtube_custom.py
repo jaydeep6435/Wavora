@@ -80,6 +80,7 @@ def process_youtube_link(request: YouTubeProcessRequest):
         'no_warnings': True,
         'extract_flat': False,
         'noplaylist': True,
+        'extractor_args': {'youtube': ['player_client=ios']}
     }
 
     try:
